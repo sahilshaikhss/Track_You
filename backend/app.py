@@ -1,0 +1,118 @@
+from flask import Flask, render_template, request
+from supabase import create_client
+from dotenv import load_dotenv
+
+import os
+import time
+
+# load env
+load_dotenv()
+
+# flask app
+app = Flask(__name__)
+
+# supabase
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+
+supabase = create_client(
+    SUPABASE_URL,
+    SUPABASE_KEY
+)
+
+# home page
+@app.route('/')
+def home():
+    return render_template("register.html")
+
+# register route
+@app.route('/register', methods=['POST'])
+def register():
+
+    try:
+
+        # form data
+        guardian_name = request.form['guardian_name']
+        guardian_phone = request.form['guardian_phone']
+        address = request.form['address']
+        members = request.form['members']
+
+        # check duplicate phone
+        existing = supabase.table(
+            "registered_persons"
+        ).select("*").eq(
+            "guardian_phone",
+            guardian_phone
+        ).execute()
+
+        if existing.data:
+            return render_template(
+                "register.html",
+                popup_message="Phone number already registered!"
+            )
+
+        # timestamp
+        timestamp = int(time.time())
+
+        # ---------------- GROUP PHOTO ----------------
+        group_photo = request.files['group_photo']
+
+        group_filename = f"group_{guardian_phone}_{timestamp}.jpg"
+
+        supabase.storage.from_(
+            "person-images"
+        ).upload(
+            group_filename,
+            group_photo.read()
+        )
+
+        group_photo_url = supabase.storage.from_(
+            "person-images"
+        ).get_public_url(group_filename)
+
+        # ---------------- INDIVIDUAL PHOTOS ----------------
+        individual_urls = []
+
+        individual_files = request.files.getlist(
+            "individual_photos"
+        )
+
+        for index, photo in enumerate(individual_files):
+
+            filename = f"{guardian_phone}_{index}_{timestamp}.jpg"
+
+            supabase.storage.from_(
+                "person-images"
+            ).upload(
+                filename,
+                photo.read()
+            )
+
+            url = supabase.storage.from_(
+                "person-images"
+            ).get_public_url(filename)
+
+            individual_urls.append(url)
+
+        # ---------------- SAVE DATABASE ----------------
+        data = {
+            "guardian_name": guardian_name,
+            "guardian_phone": guardian_phone,
+            "address": address,
+            "members": members,
+            "individual_photo_urls": individual_urls,
+            "group_photo_url": group_photo_url
+        }
+
+        supabase.table(
+            "registered_persons"
+        ).insert(data).execute()
+
+        return "Registration Successful"
+
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+# run app
+if __name__ == '__main__':
+   app.run(host="0.0.0.0", port=5000)
