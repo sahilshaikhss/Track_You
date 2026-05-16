@@ -4,6 +4,7 @@ import hashlib
 import time
 import base64
 import re
+from twilio.rest import Client as TwilioClient
 
 app = Flask(__name__)
 app.secret_key = "change_this_secret"
@@ -13,12 +14,27 @@ SUPABASE_KEY = "sb_publishable_6BJt0uNBhuTAZK3V04paOQ_fGbfKMaU"
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
+# ================= TWILIO =================
+TWILIO_SID = "ACf49660fa2ae66e3237418d06d2c10783"
+TWILIO_AUTH = "de775601733e03a3bb8bfb7f38f3a2da"
+TWILIO_PHONE = "+14195737481"
 
+twilio_client = TwilioClient(TWILIO_SID, TWILIO_AUTH)
+
+# ================= UTIL =================
 def normalize_phone(phone):
     if not phone:
         return None
     phone = re.sub(r"\D", "", phone)
     return phone[-10:]
+
+
+def format_e164(phone):
+    # India default (+91)
+    return "+91" + phone
+
+
+
 
 
 @app.route('/')
@@ -120,6 +136,72 @@ def delete():
 
     return render_template("delete.html")
 
+@app.route('/direct-message', methods=['GET', 'POST'])
+def direct_message():
 
+    visitor_info = None
+    msg_status = None
+
+    if request.method == 'POST':
+
+        phone = request.form.get('guardian_phone')
+        message = request.form.get('message')
+        action = request.form.get('action')
+
+        phone = normalize_phone(phone)
+
+        if not phone:
+            msg_status = "Invalid phone number"
+            return render_template("direct_message.html", msg_status=msg_status)
+
+        # ================= SEARCH =================
+        if action == "search":
+
+            try:
+                result = supabase.table("registered_persons") \
+                    .select("*") \
+                    .eq("guardian_phone", phone) \
+                    .execute()
+
+                if result.data:
+                    v = result.data[0]
+                    visitor_info = {
+                        "name": v.get("guardian_name"),
+                        "phone": v.get("guardian_phone"),
+                        "address": v.get("address"),
+                        "members": v.get("members")
+                    }
+                else:
+                    msg_status = "No record found"
+
+            except Exception as e:
+                msg_status = f"Search error: {str(e)}"
+
+        # ================= SEND SMS =================
+        elif action == "send":
+
+            if not message:
+                msg_status = "Message cannot be empty"
+                return render_template("direct_message.html", msg_status=msg_status)
+
+            try:
+                to_number = "+91" + phone  # India format
+
+                twilio_client.messages.create(
+                    body=message,
+                    from_=TWILIO_PHONE,
+                    to=to_number
+                )
+
+                msg_status = "Message sent successfully ✔"
+
+            except Exception as e:
+                msg_status = f"Twilio Error: {str(e)}"
+
+    return render_template(
+        "direct_message.html",
+        visitor_info=visitor_info,
+        msg_status=msg_status
+    )
 if __name__ == "__main__":
     app.run(debug=True)
