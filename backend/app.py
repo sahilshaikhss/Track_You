@@ -1,10 +1,11 @@
 from flask import Flask, render_template, request
-from supabase import create_client, Client
+from supabase import create_client, Client as SupabaseClient
+from twilio.rest import Client as TwilioClient
 import hashlib
 import time
 import base64
 import re
-from twilio.rest import Client
+
 
 
 app = Flask(__name__)
@@ -13,14 +14,15 @@ app.secret_key = "change_this_secret"
 SUPABASE_URL = "https://kxmkdnrmnckkrzicesrj.supabase.co"
 SUPABASE_KEY = "sb_publishable_6BJt0uNBhuTAZK3V04paOQ_fGbfKMaU"
 
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+supabase: SupabaseClient = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ================= TWILIO =================
-TWILIO_SID = "ACf49660fa2ae66e3237418d06d2c10783"
-TWILIO_AUTH = "de775601733e03a3bb8bfb7f38f3a2da"
-TWILIO_PHONE = "+14195737481"
+TWILIO_SID = "AC5d23e6db2fd9d27a21df02ca77a84498"
+TWILIO_AUTH = "ee2fb1328b8559bc365b9cf1ebf70457"
+TWILIO_PHONE = "+14784009309"
 
-twilio_client = Client(TWILIO_SID, TWILIO_AUTH)
+twilio_client = TwilioClient(TWILIO_SID, TWILIO_AUTH)
 
 
 # ================= UTIL =================
@@ -186,7 +188,7 @@ def direct_message():
                 return render_template("direct_message.html", msg_status=msg_status)
 
             try:
-                to_number = "+918830001371"   # India format
+                to_number = "+91" + phone  # India format
 
                 twilio_client.messages.create(
                     body=message,

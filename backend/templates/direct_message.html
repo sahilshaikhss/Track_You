@@ -48,10 +48,15 @@
 
     <!-- Message Status -->
     {% if msg_status %}
-    <div class="mt-4 p-3 bg-green-100 text-green-800 rounded-lg font-semibold">
-        {{ msg_status }}
-    </div>
-    {% endif %}
+<div class="mt-4 p-3 rounded-lg font-semibold
+    {% if 'Error' in msg_status or 'No' in msg_status %}
+        bg-red-100 text-red-800
+    {% else %}
+        bg-green-100 text-green-800
+    {% endif %}">
+    {{ msg_status }}
+</div>
+{% endif %}
 </div>
 
 </body>
