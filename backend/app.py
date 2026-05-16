@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 
 import os
 import time
+import uuid
 
 # load env
 load_dotenv()
@@ -37,7 +38,7 @@ def register():
         address = request.form['address']
         members = request.form['members']
 
-        # check duplicate phone
+        # ---------------- CHECK DUPLICATE PHONE ----------------
         existing = supabase.table(
             "registered_persons"
         ).select("*").eq(
@@ -50,6 +51,9 @@ def register():
                 "register.html",
                 popup_message="Phone number already registered!"
             )
+
+        # ---------------- UNIQUE REGISTRATION ID ----------------
+        registration_id = "CC2026-" + str(uuid.uuid4())[:6].upper()
 
         # timestamp
         timestamp = int(time.time())
@@ -101,14 +105,20 @@ def register():
             "address": address,
             "members": members,
             "individual_photo_urls": individual_urls,
-            "group_photo_url": group_photo_url
+            "group_photo_url": group_photo_url,
+            "registration_id": registration_id
         }
 
         supabase.table(
             "registered_persons"
         ).insert(data).execute()
 
-        return "Registration Successful"
+        # ---------------- SUCCESS PAGE ----------------
+        return render_template(
+            "success.html",
+            guardian_name=guardian_name,
+            registration_id=registration_id
+        )
 
     except Exception as e:
         return f"Error: {str(e)}"
