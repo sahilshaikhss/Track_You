@@ -19,9 +19,9 @@ SUPABASE_KEY = "sb_publishable_6BJt0uNBhuTAZK3V04paOQ_fGbfKMaU"
 supabase: SupabaseClient = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # ================= TWILIO =================
-TWILIO_SID = "AC5d23e6db2fd9d27a21df02ca77a84498"
-TWILIO_AUTH = "ee2fb1328b8559bc365b9cf1ebf70457"
-TWILIO_PHONE = "+14784009309"
+TWILIO_SID = "AC5d23e6db2fd9d27a21df02ca77a84498////"
+TWILIO_AUTH = "ee2fb1328b8559bc365b9cf1ebf70457////"
+TWILIO_PHONE = "+14784009309///"
 
 twilio_client = TwilioClient(TWILIO_SID, TWILIO_AUTH)
 
@@ -84,7 +84,13 @@ def register():
         "unique_code": unique_code
     }).execute()
 
-    # ================= IMAGE UPLOAD TO SUPABASE STORAGE =================
+    # ================= CLEAN OLD IMAGES (ONCE ONLY) =================
+    supabase.table("person_images") \
+        .delete() \
+        .eq("guardian_phone", phone) \
+        .execute()
+
+    # ================= IMAGE UPLOAD =================
     files = request.files.getlist("individual_photos")
 
     count = 1
@@ -98,23 +104,23 @@ def register():
                 file_ext = f.filename.rsplit(".", 1)[-1].lower()
                 file_path = f"{phone}/{count}.{file_ext}"
 
-                # upload image to supabase storage
+                # 🔥 FIX: convert FileStorage → bytes
+                file_bytes = f.read()
+
+                # upload to supabase storage
                 supabase.storage.from_("faces").upload(
                     file_path,
-                    f,
-                    {"content-type": f.mimetype, "upsert": "true"}
+                    file_bytes,
+                    file_options={
+                        "content-type": f.mimetype,
+                        "upsert": "true"
+                    }
                 )
 
                 # get public URL
                 public_url = supabase.storage.from_("faces").get_public_url(file_path)
 
-                # delete old records for clean sync (optional safety)
-                supabase.table("person_images") \
-                    .delete() \
-                    .eq("guardian_phone", phone) \
-                    .execute()
-
-                # insert new image record
+                # save to DB
                 supabase.table("person_images").insert({
                     "guardian_phone": phone,
                     "image_path": public_url,
