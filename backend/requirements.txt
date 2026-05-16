@@ -9,4 +9,3 @@ twilio
 Pillow
 numpy
 scikit-learn
-opencv-python
