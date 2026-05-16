@@ -3,3 +3,7 @@ supabase
 python-dotenv
 gunicorn
 werkzeug
+Flask-SQLAlchemy
+pymysql
+twilio
+Pillow
