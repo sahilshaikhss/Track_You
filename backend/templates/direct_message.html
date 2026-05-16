@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Direct Message to Guardian</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style> body { font-family: 'Inter', sans-serif; } </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+<div class="w-full max-w-xl bg-white p-8 rounded-2xl shadow-lg">
+    <h2 class="text-3xl font-bold text-center text-gray-800 mb-6">Direct Message to Guardian</h2>
+
+    <form method="POST" class="space-y-4">
+        <div>
+            <label for="guardian_phone" class="block text-sm font-medium text-gray-600 mb-1">Guardian Phone</label>
+            <input type="text" id="guardian_phone" name="guardian_phone" required
+                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+        </div>
+
+        <div class="flex gap-4">
+            <button type="submit" name="action" value="search"
+                    class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Search</button>
+            <button type="submit" name="action" value="send"
+                    class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Send</button>
+        </div>
+
+        <div>
+            <label for="message" class="block text-sm font-medium text-gray-600 mb-1">Message</label>
+            <textarea id="message" name="message" rows="3"
+                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Type your message here..."></textarea>
+        </div>
+    </form>
+
+    <!-- Visitor Info -->
+    {% if visitor_info %}
+    <div class="mt-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
+        <h3 class="text-lg font-semibold text-gray-700 mb-2">Registered Guardian Details</h3>
+        <p><strong>Name:</strong> {{ visitor_info.name }}</p>
+        <p><strong>Phone:</strong> {{ visitor_info.phone }}</p>
+        <p><strong>Address:</strong> {{ visitor_info.address or 'N/A' }}</p>
+        <p><strong>Members:</strong> {{ visitor_info.members or 'N/A' }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Message Status -->
+    {% if msg_status %}
+    <div class="mt-4 p-3 bg-green-100 text-green-800 rounded-lg font-semibold">
+        {{ msg_status }}
+    </div>
+    {% endif %}
+</div>
+
+</body>
+</html>

@@ -1,179 +1,452 @@
-from flask import Flask, render_template, request
-from supabase import create_client
-from dotenv import load_dotenv
-
+# ========================= IMPORTS =========================
 import os
 import time
-import uuid
+import hashlib
+import tempfile
+import base64
 
-# load env
-load_dotenv()
+from flask import Flask, render_template, request, Response
+from flask_sqlalchemy import SQLAlchemy
+from twilio.rest import Client
 
-# flask app
+from model.face_facenet_cbir import FaceNetCBIR
+from PIL import Image
+
+# ========================= APP =========================
 app = Flask(__name__)
+app.secret_key = "change_this_secret"
 
-# supabase
-SUPABASE_URL = os.getenv("SUPABASE_URL")
-SUPABASE_KEY = os.getenv("SUPABASE_KEY")
+# ========================= DB =========================
+app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root:Sahil%40.com1@localhost:3306/registration"
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-supabase = create_client(
-    SUPABASE_URL,
-    SUPABASE_KEY
-)
+db = SQLAlchemy(app)
+
+# ========================= TWILIO =========================
+TWILIO_SID = "ACf49660fa2ae66e3237418d06d2c10783"
+TWILIO_AUTH = "de775601733e03a3bb8bfb7f38f3a2da"
+TWILIO_PHONE = "+14195737481"
+twilio_client = Client(TWILIO_SID, TWILIO_AUTH)
+
+# ========================= MODELS =========================
+class Visitor(db.Model):
+    __tablename__ = "visitors"
+
+    id = db.Column(db.Integer, primary_key=True)
+    unique_code = db.Column(db.String(20))
+    guardian_name = db.Column(db.String(100))
+    guardian_phone = db.Column(db.String(20), unique=True)
+    address = db.Column(db.String(255))
+    members = db.Column(db.Text)
 
 
+class ImageModel(db.Model):
+    __tablename__ = "images"
 
-# home page
+    id = db.Column(db.Integer, primary_key=True)
+    visitor_id = db.Column(db.Integer, db.ForeignKey("visitors.id"))
+    image_data = db.Column(db.LargeBinary)
+    mime_type = db.Column(db.String(50))
+    image_type = db.Column(db.String(20))
+
+    visitor = db.relationship("Visitor")
+
+
+class QueryImage(db.Model):
+    __tablename__ = "query_images"
+
+    id = db.Column(db.Integer, primary_key=True)
+    image_data = db.Column(db.LargeBinary)
+    mime_type = db.Column(db.String(50))
+
+
+class QueryProcess(db.Model):
+    __tablename__ = "query_process"
+
+    id = db.Column(db.Integer, primary_key=True)
+    visitor_id = db.Column(db.Integer)
+    image_id = db.Column(db.Integer)
+    query_image_id = db.Column(db.Integer)
+    status = db.Column(db.String(50))
+    created_at = db.Column(db.DateTime, default=db.func.current_timestamp())
+
+# ========================= INIT =========================
+with app.app_context():
+    db.create_all()
+
+# ========================= MODEL =========================
+cbir_model = FaceNetCBIR()
+
+# ========================= CACHE (IMPORTANT FIX) =========================
+known_embeddings = []
+known_visitors = []
+known_image_ids = []
+
+def load_cache():
+    global known_embeddings, known_visitors, known_image_ids
+
+    print("Loading face cache...")
+
+    images = ImageModel.query.all()
+
+    temp_dir = tempfile.mkdtemp()
+
+    for i, img in enumerate(images):
+
+        path = os.path.join(temp_dir, f"{i}.jpg")
+
+        with open(path, "wb") as f:
+            f.write(img.image_data)
+
+        emb = cbir_model.extract_embedding(path)
+
+        if emb is not None:
+            known_embeddings.append(emb)
+            known_visitors.append(img.visitor)
+            known_image_ids.append(img.id)
+
+    print("Cache loaded:", len(known_embeddings))
+
+
+with app.app_context():
+    load_cache()
+
+# ========================= HOME =========================
 @app.route('/')
-def home():
-    return render_template("register.html")
+def search_page():
+    return render_template("search.html")
 
-# register route
-@app.route('/register', methods=['POST'])
+# ========================= REGISTER =========================
+@app.route('/register', methods=['GET', 'POST'])
 def register():
-
-    try:
-
-        # form data
-        guardian_name = request.form['guardian_name']
-        guardian_phone = request.form['guardian_phone']
-        address = request.form['address']
-        members = request.form['members']
-
-        # ---------------- CHECK DUPLICATE PHONE ----------------
-        existing = supabase.table(
-            "registered_persons"
-        ).select("*").eq(
-            "guardian_phone",
-            guardian_phone
-        ).execute()
-
-        if existing.data:
-            return render_template(
-                "register.html",
-                popup_message="Phone number already registered!"
-            )
-
-        # ---------------- UNIQUE REGISTRATION ID ----------------
-        registration_id = "CC2026-" + str(uuid.uuid4())[:6].upper()
-
-        # timestamp
-        timestamp = int(time.time())
-
-        # ---------------- GROUP PHOTO ----------------
-        group_photo = request.files['group_photo']
-
-        group_filename = f"group_{guardian_phone}_{timestamp}.jpg"
-
-        supabase.storage.from_(
-            "person-images"
-        ).upload(
-            group_filename,
-            group_photo.read()
-        )
-
-        group_photo_url = supabase.storage.from_(
-            "person-images"
-        ).get_public_url(group_filename)
-
-        # ---------------- INDIVIDUAL PHOTOS ----------------
-        individual_urls = []
-
-        individual_files = request.files.getlist(
-            "individual_photos"
-        )
-
-        for index, photo in enumerate(individual_files):
-
-            filename = f"{guardian_phone}_{index}_{timestamp}.jpg"
-
-            supabase.storage.from_(
-                "person-images"
-            ).upload(
-                filename,
-                photo.read()
-            )
-
-            url = supabase.storage.from_(
-                "person-images"
-            ).get_public_url(filename)
-
-            individual_urls.append(url)
-
-        # ---------------- SAVE DATABASE ----------------
-        data = {
-            "guardian_name": guardian_name,
-            "guardian_phone": guardian_phone,
-            "address": address,
-            "members": members,
-            "individual_photo_urls": individual_urls,
-            "group_photo_url": group_photo_url,
-            "registration_id": registration_id
-        }
-
-        supabase.table(
-            "registered_persons"
-        ).insert(data).execute()
-
-        # ---------------- SUCCESS PAGE ----------------
-        return render_template(
-            "success.html",
-            guardian_name=guardian_name,
-            registration_id=registration_id
-        )
-
-    except Exception as e:
-        return f"Error: {str(e)}"
-    
-
-# ========================= DELETE VISITOR =========================
-@app.route('/delete', methods=['GET', 'POST'])
-def delete_visitor():
-
-    message = None
 
     if request.method == 'POST':
 
-        guardian_phone = request.form['guardian_phone']
+        name = request.form['guardian_name']
+        phone = request.form['guardian_phone']
+        address = request.form.get('address')
+        members = request.form.get('members')
 
-        # ---------------- CHECK IF EXISTS ----------------
-        existing = supabase.table(
-            "registered_persons"
-        ).select("*").eq(
-            "guardian_phone",
-            guardian_phone
-        ).execute()
+        existing = Visitor.query.filter_by(guardian_phone=phone).first()
 
-        if existing.data:
+        if existing:
+            return render_template("register.html", popup_message="Phone already registered")
 
-            # ---------------- DELETE RECORD ----------------
-            supabase.table(
-                "registered_persons"
-            ).delete().eq(
-                "guardian_phone",
-                guardian_phone
-            ).execute()
+        unique_code = hashlib.sha1(f"{name}{phone}{time.time()}".encode()).hexdigest()[:10]
 
-            message = (
-                f"Visitor with phone "
-                f"{guardian_phone} deleted successfully."
+        visitor = Visitor(
+            guardian_name=name,
+            guardian_phone=phone,
+            address=address,
+            members=members,
+            unique_code=unique_code
+        )
+
+        db.session.add(visitor)
+        db.session.commit()
+
+        files = request.files.getlist("individual_photos")
+
+        for f in files:
+            img = ImageModel(
+                visitor_id=visitor.id,
+                image_data=f.read(),
+                mime_type=f.mimetype,
+                image_type="individual"
             )
+            db.session.add(img)
 
-        else:
+        db.session.commit()
 
-            message = (
-                f"No visitor found with "
-                f"{guardian_phone}"
-            )
+        return render_template(
+            "success.html",
+            guardian_name=name,
+            registration_id=unique_code
+        )
+
+    return render_template("register.html")
+
+# ========================= QUERY FAST =========================
+@app.route('/process_query', methods=['POST'])
+def process_query():
+
+    query_file = request.files.get("query_image")
+
+    query_bytes = query_file.read()
+
+    query_img = QueryImage(image_data=query_bytes, mime_type=query_file.mimetype)
+    db.session.add(query_img)
+    db.session.commit()
+
+    temp = tempfile.NamedTemporaryFile(delete=False, suffix=".jpg")
+    temp.write(query_bytes)
+    temp.close()
+
+    query_emb = cbir_model.extract_embedding(temp.name)
+
+    best_score = 0
+    best_index = -1
+
+    for i, emb in enumerate(known_embeddings):
+
+        score = cbir_model.compare(query_emb, emb)
+
+        if score > best_score:
+            best_score = score
+            best_index = i
+
+    status = "NOT FOUND"
+    visitor = None
+    image_id = None
+
+    if best_score > 0.6 and best_index != -1:
+        status = "FOUND"
+        visitor = known_visitors[best_index]
+        image_id = known_image_ids[best_index]
+
+    process = QueryProcess(
+        visitor_id=visitor.id if visitor else None,
+        image_id=image_id,
+        query_image_id=query_img.id,
+        status=status
+    )
+
+    db.session.add(process)
+    db.session.commit()
 
     return render_template(
-        "delete.html",
-        message=message
+        "query_results.html",
+        matches=[{
+            "visitor": visitor,
+            "score": f"{best_score*100:.2f}",
+            "image_id": image_id,
+            "query_id": query_img.id
+        }] if status == "FOUND" else [],
+        message=status,
+        query_image_url="data:image/jpeg;base64," + base64.b64encode(query_bytes).decode()
     )
-    
 
+# ========================= DELETE =========================
+@app.route('/delete', methods=['GET','POST'])
+def delete_visitor():
 
+    msg = None
 
-# run app
-if __name__ == '__main__':
-   app.run(host="0.0.0.0", port=5000)
+    if request.method == 'POST':
+
+        phone = request.form['guardian_phone']
+
+        v = Visitor.query.filter_by(guardian_phone=phone).first()
+
+        if v:
+            db.session.delete(v)
+            db.session.commit()
+            msg = "Deleted successfully"
+        else:
+            msg = "Not found"
+
+    return render_template("delete.html", message=msg)
+
+#direct messageS
+@app.route('/direct_message', methods=['GET', 'POST'])
+def direct_message():
+
+    visitor_info = None
+    msg_status = None
+
+    if request.method == 'POST':
+
+        guardian_phone = request.form.get('guardian_phone')
+        action = request.form.get('action')
+        message = request.form.get('message')
+
+        # normalize phone
+        phone = normalize_phone(guardian_phone)
+
+        visitor = Visitor.query.filter_by(
+            guardian_phone=phone
+        ).first()
+
+        # ================= SEARCH =================
+        if action == 'search':
+
+            if visitor:
+                visitor_info = {
+                    "name": visitor.guardian_name,
+                    "phone": visitor.guardian_phone,
+                    "address": visitor.address,
+                    "members": visitor.members
+                }
+                msg_status = "Guardian found."
+
+            else:
+                visitor_info = None
+                msg_status = "No registered guardian found (can still send SMS)."
+
+        # ================= SEND MESSAGE =================
+        elif action == 'send':
+
+            try:
+                twilio_client.messages.create(
+                    body=message,
+                    from_=TWILIO_PHONE,
+                    to=f"+91{phone}"
+                )
+
+                msg_status = f"Message sent to {phone}"
+
+                # OPTIONAL LOG (important)
+                print(f"[SMS SENT] {phone} -> {message}")
+
+            except Exception as e:
+                msg_status = f"Failed to send: {str(e)}"
+
+            # show visitor info if exists
+            if visitor:
+                visitor_info = {
+                    "name": visitor.guardian_name,
+                    "phone": visitor.guardian_phone,
+                    "address": visitor.address,
+                    "members": visitor.members
+                }
+
+    return render_template(
+        "direct_message.html",
+        visitor_info=visitor_info,
+        msg_status=msg_status
+    )
+
+#Alert Sending Route
+
+@app.route('/send_alert/<int:image_id>/<int:query_id>')
+def send_alert(image_id, query_id):
+
+    img = db.session.get(ImageModel, image_id)
+    query_img = db.session.get(QueryImage, query_id)
+
+    # ---------------- SAFETY CHECK ----------------
+    if not img or not query_img:
+        return render_template(
+            "alert_sent.html",
+            success=None,
+            error="Invalid image or query",
+            guardian_name="N/A",
+            guardian_phone="N/A"
+        )
+
+    visitor = img.visitor
+
+    guardian_name = visitor.guardian_name
+    guardian_phone_raw = visitor.guardian_phone
+    guardian_phone = normalize_phone(guardian_phone_raw)
+
+    found_link = f"http://127.0.0.1:5000/reunification/{query_id}/found"
+    not_found_link = f"http://127.0.0.1:5000/reunification/{query_id}/not_found"
+
+    # ---------------- PROCESS (optional tracking) ----------------
+    process = QueryProcess(
+        visitor_id=visitor.id,
+        image_id=img.id,
+        query_image_id=query_id,
+        guardian_phone=guardian_phone_raw,
+        status="Still Processing"
+    )
+
+    db.session.add(process)
+    db.session.commit()
+
+    success = None
+    error = None
+
+    # ---------------- NON TWILIO CASE ----------------
+    if guardian_phone != TWILIO_VERIFIED_NUMBER:
+
+        error = "Non-Twilio number (SMS not sent)"
+
+        return render_template(
+            "alert_sent.html",
+            success=None,
+            error=error,
+            guardian_name=guardian_name,
+            guardian_phone=guardian_phone_raw,
+            found_link=found_link,
+            not_found_link=not_found_link
+        )
+
+    # ---------------- TWILIO CASE ----------------
+    try:
+
+        twilio_client.messages.create(
+            body=(
+                f"Possible match found\n\n"
+                f"FOUND:\n{found_link}\n\n"
+                f"NOT FOUND:\n{not_found_link}"
+            ),
+            from_=TWILIO_PHONE,
+            to=f"+91{guardian_phone}"
+        )
+
+        success = "Alert sent successfully"
+
+    except Exception as e:
+        error = str(e)
+
+    return render_template(
+        "alert_sent.html",
+        success=success,
+        error=error,
+        guardian_name=guardian_name,
+        guardian_phone=guardian_phone_raw,
+        found_link=found_link,
+        not_found_link=not_found_linkS
+    )
+
+# ========================= LIVE PROCESSING =========================
+@app.route('/processing')
+def processing():
+
+    processes = QueryProcess.query.order_by(
+        QueryProcess.created_at.desc()
+    ).all()
+
+    return render_template(
+        "processing.html",
+        processes=processes
+    )
+
+# ========================= REUNIFICATION STATUS =========================
+@app.route('/reunification/<int:process_id>/<status>')
+def reunification_update(
+    process_id,
+    status
+):
+
+    process = db.session.get(
+        QueryProcess,
+        process_id
+    )
+
+    if not process:
+        return "Invalid Process"
+
+    if status == "found":
+
+        process.status = (
+            "Reunification Done"
+        )
+
+    elif status == "not_found":
+
+        process.status = (
+            "Person Not Found"
+        )
+
+    db.session.commit()
+
+    return render_template(
+        "reunification_response.html",
+        status=process.status
+    )
+# ========================= RUN =========================
+if __name__ == "__main__":
+    app.run(debug=True)

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Live Processing</title>
+<style>
+table{
+width:100%;
+border-collapse:collapse;
+}
+th,td{
+border:1px solid black;
+padding:10px;
+text-align:center;
+}
+img{
+width:120px;
+height:120px;
+object-fit:cover;
+}
+</style>
+</head>
+<body>
+
+<h1>Live Query Processing</h1>
+
+<table>
+
+<tr>
+<th>ID</th>
+<th>Query Image</th>
+<th>Matched Image</th>
+<th>Guardian Number</th>
+<th>Status</th>
+<th>Time</th>
+</tr>
+
+{% for p in processes %}
+
+<tr>
+
+<td>{{ p.id }}</td>
+
+<td>
+<img src="{{ url_for('get_query_image', image_id=p.query_image_id) }}">
+</td>
+
+<td>
+<img src="{{ url_for('get_image', image_id=p.image_id) }}">
+</td>
+
+<td>{{ p.guardian_phone }}</td>
+
+<td>{{ p.status }}</td>
+
+<td>{{ p.created_at }}</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+</body>
+</html>
