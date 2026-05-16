@@ -1,11 +1,12 @@
-flask
+Flask
 supabase
 python-dotenv
 gunicorn
-werkzeug
+Werkzeug
 Flask-SQLAlchemy
 pymysql
 twilio
 Pillow
 numpy
 scikit-learn
+opencv-python
