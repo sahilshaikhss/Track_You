@@ -1,19 +1,20 @@
 from flask import Flask, render_template, request
 from supabase import create_client, Client as SupabaseClient
 from twilio.rest import Client as TwilioClient
+
 import hashlib
 import time
-import base64
 import re
+import os
+from werkzeug.utils import secure_filename
 
-
-
+# ================= APP =================
 app = Flask(__name__)
 app.secret_key = "change_this_secret"
 
+# ================= SUPABASE =================
 SUPABASE_URL = "https://kxmkdnrmnckkrzicesrj.supabase.co"
 SUPABASE_KEY = "sb_publishable_6BJt0uNBhuTAZK3V04paOQ_fGbfKMaU"
-
 
 supabase: SupabaseClient = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -24,6 +25,9 @@ TWILIO_PHONE = "+14784009309"
 
 twilio_client = TwilioClient(TWILIO_SID, TWILIO_AUTH)
 
+# ================= DATASET STORAGE =================
+DATASET_PATH = "dataset"
+os.makedirs(DATASET_PATH, exist_ok=True)
 
 # ================= UTIL =================
 def normalize_phone(phone):
@@ -34,12 +38,10 @@ def normalize_phone(phone):
 
 
 def format_e164(phone):
-    # India format
     return "+91" + phone
 
 
-
-
+# ================= HOME =================
 @app.route('/')
 def home():
     return render_template("register.html")
@@ -48,70 +50,87 @@ def home():
 @app.route('/register', methods=['POST'])
 def register():
 
-    try:
-        name = request.form.get('guardian_name')
-        phone = request.form.get('guardian_phone')
-        address = request.form.get('address')
-        members = request.form.get('members')
+    name = request.form.get('guardian_name')
+    phone = normalize_phone(request.form.get('guardian_phone'))
+    address = request.form.get('address')
+    members = request.form.get('members')
 
-        if not name or not phone:
-            return "Missing fields", 400
+    if not name or not phone:
+        return "Missing data", 400
 
-        phone_norm = normalize_phone(phone)
+    # ================= CHECK DUPLICATE =================
+    existing = supabase.table("registered_persons") \
+        .select("*") \
+        .eq("guardian_phone", phone) \
+        .execute()
 
-        # duplicate check
-        existing = supabase.table("registered_persons") \
-            .select("*") \
-            .eq("guardian_phone", phone_norm) \
-            .execute()
-
-        if existing.data:
-            return render_template("register.html", popup_message="Phone already registered")
-
-        unique_code = hashlib.sha1(
-            f"{name}{phone}{time.time()}".encode()
-        ).hexdigest()[:10]
-
-        # ================= SAVE MAIN PERSON =================
-        supabase.table("registered_persons").insert({
-            "guardian_name": name,
-            "guardian_phone": phone_norm,
-            "address": address,
-            "members": members,
-            "group_photo_url": None,  # optional for now
-        }).execute()
-
-        # ================= SAVE IMAGES =================
-        files = request.files.getlist("individual_photos") or []
-
-        for f in files:
-            img_bytes = f.read()
-            if not img_bytes:
-                continue
-
-            image_base64 = base64.b64encode(img_bytes).decode()
-
-            supabase.table("person_images").insert({
-                "guardian_phone": phone_norm,
-                "image_url": image_base64   # (temporary base64 storage)
-            }).execute()
-
+    if existing.data:
         return render_template(
-            "success.html",
-            guardian_name=name,
-            registration_id=unique_code
+            "register.html",
+            popup_message="This phone number is already registered!"
         )
 
-    except Exception as e:
-        import traceback
-        print(traceback.format_exc())
-        return "Internal Server Error", 500
+    # ================= UNIQUE CODE (FIXED) =================
+    unique_code = hashlib.sha1(
+        f"{name}{phone}{time.time()}".encode()
+    ).hexdigest()[:10]
 
+    # ================= INSERT USER =================
+    supabase.table("registered_persons").insert({
+        "guardian_name": name,
+        "guardian_phone": phone,
+        "address": address,
+        "members": members,
+        "unique_code": unique_code
+    }).execute()
 
-# ================= DELETE PAGE =================
+    # ================= IMAGE STORAGE =================
+    files = request.files.getlist("individual_photos")
+
+    person_folder = os.path.join(DATASET_PATH, phone)
+    os.makedirs(person_folder, exist_ok=True)
+
+    # clear old local images
+    for f in os.listdir(person_folder):
+        os.remove(os.path.join(person_folder, f))
+
+    # clear old DB images
+    supabase.table("person_images") \
+        .delete() \
+        .eq("guardian_phone", phone) \
+        .execute()
+
+    count = 1
+
+    if files and files[0].filename != "":
+
+        for f in files:
+
+            if not f or f.filename == "":
+                continue
+
+            filepath = os.path.join(person_folder, f"{count}.jpg")
+
+            # save locally
+            f.save(filepath)
+
+            # save in supabase
+            supabase.table("person_images").insert({
+                "guardian_phone": phone,
+                "image_path": filepath,
+                "embedding": None
+            }).execute()
+
+            count += 1
+
+    return render_template(
+        "success.html",
+        guardian_name=name,
+        registration_id=unique_code
+    )
+# ================= DELETE =================
 @app.route('/delete', methods=['GET', 'POST'])
 def delete():
-
     if request.method == 'POST':
 
         phone = request.form.get('guardian_phone')
@@ -122,23 +141,30 @@ def delete():
         phone = normalize_phone(phone)
 
         try:
-            # 🔥 DELETE FROM SUPABASE
             result = supabase.table("registered_persons") \
                 .delete() \
                 .eq("guardian_phone", phone) \
                 .execute()
 
-            # check if anything deleted
+            # delete dataset folder also
+            folder = os.path.join(DATASET_PATH, phone)
+            if os.path.exists(folder):
+                for file in os.listdir(folder):
+                    os.remove(os.path.join(folder, file))
+                os.rmdir(folder)
+
             if result.data:
                 return render_template("delete.html", message="Record deleted successfully")
             else:
-                return render_template("delete.html", message="No record found for this phone")
+                return render_template("delete.html", message="No record found")
 
         except Exception as e:
             return render_template("delete.html", message=f"Error: {str(e)}")
 
     return render_template("delete.html")
 
+
+# ================= DIRECT MESSAGE =================
 @app.route('/direct_message', methods=['GET', 'POST'])
 def direct_message():
 
@@ -154,8 +180,7 @@ def direct_message():
         phone = normalize_phone(phone)
 
         if not phone:
-            msg_status = "Invalid phone number"
-            return render_template("direct_message.html", msg_status=msg_status)
+            return render_template("direct_message.html", msg_status="Invalid phone number")
 
         # ================= SEARCH =================
         if action == "search":
@@ -184,11 +209,10 @@ def direct_message():
         elif action == "send":
 
             if not message:
-                msg_status = "Message cannot be empty"
-                return render_template("direct_message.html", msg_status=msg_status)
+                return render_template("direct_message.html", msg_status="Message cannot be empty")
 
             try:
-                to_number = "+91" + phone  # India format
+                to_number = format_e164(phone)
 
                 twilio_client.messages.create(
                     body=message,
@@ -206,5 +230,9 @@ def direct_message():
         visitor_info=visitor_info,
         msg_status=msg_status
     )
+
+
+# ================= RUN =================
 if __name__ == "__main__":
     app.run(debug=True)
+    
