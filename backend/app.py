@@ -21,6 +21,8 @@ supabase = create_client(
     SUPABASE_KEY
 )
 
+
+
 # home page
 @app.route('/')
 def home():
@@ -122,6 +124,55 @@ def register():
 
     except Exception as e:
         return f"Error: {str(e)}"
+    
+
+# ========================= DELETE VISITOR =========================
+@app.route('/delete', methods=['GET', 'POST'])
+def delete_visitor():
+
+    message = None
+
+    if request.method == 'POST':
+
+        guardian_phone = request.form['guardian_phone']
+
+        # ---------------- CHECK IF EXISTS ----------------
+        existing = supabase.table(
+            "registered_persons"
+        ).select("*").eq(
+            "guardian_phone",
+            guardian_phone
+        ).execute()
+
+        if existing.data:
+
+            # ---------------- DELETE RECORD ----------------
+            supabase.table(
+                "registered_persons"
+            ).delete().eq(
+                "guardian_phone",
+                guardian_phone
+            ).execute()
+
+            message = (
+                f"Visitor with phone "
+                f"{guardian_phone} deleted successfully."
+            )
+
+        else:
+
+            message = (
+                f"No visitor found with "
+                f"{guardian_phone}"
+            )
+
+    return render_template(
+        "delete.html",
+        message=message
+    )
+    
+
+
 
 # run app
 if __name__ == '__main__':
