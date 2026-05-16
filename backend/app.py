@@ -11,7 +11,6 @@ from flask_sqlalchemy import SQLAlchemy
 from twilio.rest import Client
 from supabase import create_client, Client as SupabaseClient
 
-from model.face_facenet_cbir import FaceNetCBIR
 
 # ========================= APP =========================
 app = Flask(__name__)
