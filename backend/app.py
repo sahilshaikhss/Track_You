@@ -70,7 +70,7 @@ def register():
             popup_message="This phone number is already registered!"
         )
 
-    # ================= UNIQUE CODE (FIXED) =================
+    # ================= UNIQUE CODE =================
     unique_code = hashlib.sha1(
         f"{name}{phone}{time.time()}".encode()
     ).hexdigest()[:10]
@@ -84,44 +84,44 @@ def register():
         "unique_code": unique_code
     }).execute()
 
-    # ================= IMAGE STORAGE =================
+    # ================= IMAGE UPLOAD TO SUPABASE STORAGE =================
     files = request.files.getlist("individual_photos")
-
-    person_folder = os.path.join(DATASET_PATH, phone)
-    os.makedirs(person_folder, exist_ok=True)
-
-    # clear old local images
-    for f in os.listdir(person_folder):
-        os.remove(os.path.join(person_folder, f))
-
-    # clear old DB images
-    supabase.table("person_images") \
-        .delete() \
-        .eq("guardian_phone", phone) \
-        .execute()
 
     count = 1
 
-    if files and files[0].filename != "":
+    if files:
 
         for f in files:
 
-            if not f or f.filename == "":
-                continue
+            if f and f.filename != "":
 
-            filepath = os.path.join(person_folder, f"{count}.jpg")
+                file_ext = f.filename.rsplit(".", 1)[-1].lower()
+                file_path = f"{phone}/{count}.{file_ext}"
 
-            # save locally
-            f.save(filepath)
+                # upload image to supabase storage
+                supabase.storage.from_("faces").upload(
+                    file_path,
+                    f,
+                    {"content-type": f.mimetype, "upsert": "true"}
+                )
 
-            # save in supabase
-            supabase.table("person_images").insert({
-                "guardian_phone": phone,
-                "image_path": filepath,
-                "embedding": None
-            }).execute()
+                # get public URL
+                public_url = supabase.storage.from_("faces").get_public_url(file_path)
 
-            count += 1
+                # delete old records for clean sync (optional safety)
+                supabase.table("person_images") \
+                    .delete() \
+                    .eq("guardian_phone", phone) \
+                    .execute()
+
+                # insert new image record
+                supabase.table("person_images").insert({
+                    "guardian_phone": phone,
+                    "image_path": public_url,
+                    "embedding": None
+                }).execute()
+
+                count += 1
 
     return render_template(
         "success.html",
