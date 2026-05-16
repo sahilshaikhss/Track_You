@@ -4,7 +4,8 @@ import hashlib
 import time
 import base64
 import re
-from twilio.rest import Client as TwilioClient
+from twilio.rest import Client
+
 
 app = Flask(__name__)
 app.secret_key = "change_this_secret"
@@ -19,7 +20,8 @@ TWILIO_SID = "ACf49660fa2ae66e3237418d06d2c10783"
 TWILIO_AUTH = "de775601733e03a3bb8bfb7f38f3a2da"
 TWILIO_PHONE = "+14195737481"
 
-twilio_client = TwilioClient(TWILIO_SID, TWILIO_AUTH)
+twilio_client = Client(TWILIO_SID, TWILIO_AUTH)
+
 
 # ================= UTIL =================
 def normalize_phone(phone):
@@ -30,9 +32,8 @@ def normalize_phone(phone):
 
 
 def format_e164(phone):
-    # India default (+91)
+    # India format
     return "+91" + phone
-
 
 
 
