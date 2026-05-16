@@ -186,7 +186,7 @@ def direct_message():
                 return render_template("direct_message.html", msg_status=msg_status)
 
             try:
-                to_number = "+91" + phone  # India format
+                to_number = "+918830001317"   # India format
 
                 twilio_client.messages.create(
                     body=message,
