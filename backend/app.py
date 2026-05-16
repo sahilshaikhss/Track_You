@@ -1,22 +1,19 @@
 # ========================= IMPORTS =========================
-import os
-import time
-import hashlib
-import tempfile
-import base64
-import re
-
 from flask import Flask, render_template, request
 from flask_sqlalchemy import SQLAlchemy
-from twilio.rest import Client
 from supabase import create_client, Client as SupabaseClient
+from twilio.rest import Client
 
+import re
+import hashlib
+import time
+import base64
 
 # ========================= APP =========================
 app = Flask(__name__)
 app.secret_key = "change_this_secret"
 
-# ========================= MYSQL =========================
+# ========================= MYSQL CONFIG =========================
 app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root:Sahil%40.com1@localhost:3306/Kaizen"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -32,6 +29,7 @@ supabase: SupabaseClient = create_client(SUPABASE_URL, SUPABASE_KEY)
 TWILIO_SID = "ACxxxxxxxxxxxxxxxx"
 TWILIO_AUTH = "xxxxxxxxxxxxxxxx"
 TWILIO_PHONE = "+14195737481"
+
 twilio_client = Client(TWILIO_SID, TWILIO_AUTH)
 
 # ========================= UTIL =========================
@@ -41,7 +39,8 @@ def normalize_phone(phone):
     phone = re.sub(r"\D", "", phone)
     return phone[-10:]
 
-# ========================= MODELS (MYSQL) =========================
+
+# ========================= MODELS =========================
 class Visitor(db.Model):
     __tablename__ = "visitors"
 
@@ -69,13 +68,12 @@ class ImageModel(db.Model):
 with app.app_context():
     db.create_all()
 
-# ========================= FACE MODEL =========================
-cbir_model = FaceNetCBIR()
 
-# ========================= CACHE =========================
-known_embeddings = []
-known_visitors = []
-known_image_ids = []
+# ========================= HOME =========================
+@app.route('/')
+def home():
+    return render_template("search.html")
+
 
 # ========================= REGISTER =========================
 @app.route('/register', methods=['GET', 'POST'])
@@ -88,13 +86,17 @@ def register():
         address = request.form.get('address')
         members = request.form.get('members')
 
+        # check duplicate
         existing = Visitor.query.filter_by(guardian_phone=phone).first()
         if existing:
             return render_template("register.html", popup_message="Phone already registered")
 
-        unique_code = hashlib.sha1(f"{name}{phone}{time.time()}".encode()).hexdigest()[:10]
+        # unique code
+        unique_code = hashlib.sha1(
+            f"{name}{phone}{time.time()}".encode()
+        ).hexdigest()[:10]
 
-        # ================= MYSQL INSERT =================
+        # ================= MYSQL SAVE =================
         visitor = Visitor(
             guardian_name=name,
             guardian_phone=phone,
@@ -106,22 +108,33 @@ def register():
         db.session.add(visitor)
         db.session.commit()
 
+        # ================= FILE HANDLING =================
         files = request.files.getlist("individual_photos")
+
+        image_payloads = []
 
         for f in files:
             img_bytes = f.read()
 
-            img = ImageModel(
+            # save in MySQL
+            db.session.add(ImageModel(
                 visitor_id=visitor.id,
                 image_data=img_bytes,
                 mime_type=f.mimetype,
                 image_type="individual"
-            )
-            db.session.add(img)
+            ))
+
+            # prepare for Supabase
+            image_payloads.append({
+                "visitor_phone": phone,
+                "image_base64": base64.b64encode(img_bytes).decode(),
+                "mime_type": f.mimetype,
+                "image_type": "individual"
+            })
 
         db.session.commit()
 
-        # ================= SUPABASE INSERT =================
+        # ================= SUPABASE SYNC =================
         try:
             supabase.table("visitors").insert({
                 "guardian_name": name,
@@ -131,20 +144,13 @@ def register():
                 "unique_code": unique_code
             }).execute()
 
-            # upload images (base64 for simplicity)
-            for f in files:
-                img_bytes = f.read()
-                supabase.table("images").insert({
-                    "visitor_phone": phone,
-                    "image_base64": base64.b64encode(img_bytes).decode(),
-                    "mime_type": f.mimetype,
-                    "image_type": "individual"
-                }).execute()
+            if image_payloads:
+                supabase.table("images").insert(image_payloads).execute()
 
         except Exception as e:
             print("Supabase error:", e)
 
-        # ================= SUCCESS PAGE =================
+        # ================= SUCCESS =================
         return render_template(
             "success.html",
             guardian_name=name,
