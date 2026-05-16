@@ -7,3 +7,5 @@ Flask-SQLAlchemy
 pymysql
 twilio
 Pillow
+numpy
+scipy
