@@ -136,7 +136,7 @@ def delete():
 
     return render_template("delete.html")
 
-@app.route('/direct-message', methods=['GET', 'POST'])
+@app.route('/direct_message', methods=['GET', 'POST'])
 def direct_message():
 
     visitor_info = None
