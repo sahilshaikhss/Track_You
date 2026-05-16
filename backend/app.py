@@ -4,6 +4,7 @@ import time
 import hashlib
 import tempfile
 import base64
+import re
 
 from flask import Flask, render_template, request, Response
 from flask_sqlalchemy import SQLAlchemy
@@ -11,13 +12,14 @@ from twilio.rest import Client
 
 from model.face_facenet_cbir import FaceNetCBIR
 from PIL import Image
+import numpy as np
 
 # ========================= APP =========================
 app = Flask(__name__)
 app.secret_key = "change_this_secret"
 
 # ========================= DB =========================
-app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root:Sahil%40.com1@localhost:3306/registration"
+app.config['SQLALCHEMY_DATABASE_URI'] = "mysql+pymysql://root:Sahil%40.com1@localhost:3306/Kaizen"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -27,6 +29,15 @@ TWILIO_SID = "ACf49660fa2ae66e3237418d06d2c10783"
 TWILIO_AUTH = "de775601733e03a3bb8bfb7f38f3a2da"
 TWILIO_PHONE = "+14195737481"
 twilio_client = Client(TWILIO_SID, TWILIO_AUTH)
+
+TWILIO_VERIFIED_NUMBER = "8830001371"
+
+# ========================= UTIL =========================
+def normalize_phone(phone):
+    if not phone:
+        return None
+    phone = re.sub(r"\D", "", phone)
+    return phone[-10:]
 
 # ========================= MODELS =========================
 class Visitor(db.Model):
@@ -77,7 +88,7 @@ with app.app_context():
 # ========================= MODEL =========================
 cbir_model = FaceNetCBIR()
 
-# ========================= CACHE (IMPORTANT FIX) =========================
+# ========================= CACHE =========================
 known_embeddings = []
 known_visitors = []
 known_image_ids = []
@@ -88,17 +99,15 @@ def load_cache():
     print("Loading face cache...")
 
     images = ImageModel.query.all()
-
     temp_dir = tempfile.mkdtemp()
 
     for i, img in enumerate(images):
-
         path = os.path.join(temp_dir, f"{i}.jpg")
 
         with open(path, "wb") as f:
             f.write(img.image_data)
 
-        emb = cbir_model.extract_embedding(path)
+        emb = cbir_model.extract_features(path)   # ✅ FIXED HERE
 
         if emb is not None:
             known_embeddings.append(emb)
@@ -106,7 +115,6 @@ def load_cache():
             known_image_ids.append(img.id)
 
     print("Cache loaded:", len(known_embeddings))
-
 
 with app.app_context():
     load_cache()
@@ -166,12 +174,11 @@ def register():
 
     return render_template("register.html")
 
-# ========================= QUERY FAST =========================
+# ========================= QUERY =========================
 @app.route('/process_query', methods=['POST'])
 def process_query():
 
     query_file = request.files.get("query_image")
-
     query_bytes = query_file.read()
 
     query_img = QueryImage(image_data=query_bytes, mime_type=query_file.mimetype)
@@ -182,14 +189,16 @@ def process_query():
     temp.write(query_bytes)
     temp.close()
 
-    query_emb = cbir_model.extract_embedding(temp.name)
+    query_emb = cbir_model.extract_features(temp.name)   # ✅ FIXED
 
     best_score = 0
     best_index = -1
 
     for i, emb in enumerate(known_embeddings):
 
-        score = cbir_model.compare(query_emb, emb)
+        score = np.dot(query_emb, emb) / (
+            np.linalg.norm(query_emb) * np.linalg.norm(emb)
+        )
 
         if score > best_score:
             best_score = score
@@ -233,9 +242,7 @@ def delete_visitor():
     msg = None
 
     if request.method == 'POST':
-
         phone = request.form['guardian_phone']
-
         v = Visitor.query.filter_by(guardian_phone=phone).first()
 
         if v:
@@ -247,7 +254,7 @@ def delete_visitor():
 
     return render_template("delete.html", message=msg)
 
-#direct messageS
+# ========================= DIRECT MESSAGE =========================
 @app.route('/direct_message', methods=['GET', 'POST'])
 def direct_message():
 
@@ -260,14 +267,10 @@ def direct_message():
         action = request.form.get('action')
         message = request.form.get('message')
 
-        # normalize phone
         phone = normalize_phone(guardian_phone)
 
-        visitor = Visitor.query.filter_by(
-            guardian_phone=phone
-        ).first()
+        visitor = Visitor.query.filter_by(guardian_phone=phone).first()
 
-        # ================= SEARCH =================
         if action == 'search':
 
             if visitor:
@@ -278,12 +281,9 @@ def direct_message():
                     "members": visitor.members
                 }
                 msg_status = "Guardian found."
-
             else:
-                visitor_info = None
                 msg_status = "No registered guardian found (can still send SMS)."
 
-        # ================= SEND MESSAGE =================
         elif action == 'send':
 
             try:
@@ -295,20 +295,8 @@ def direct_message():
 
                 msg_status = f"Message sent to {phone}"
 
-                # OPTIONAL LOG (important)
-                print(f"[SMS SENT] {phone} -> {message}")
-
             except Exception as e:
                 msg_status = f"Failed to send: {str(e)}"
-
-            # show visitor info if exists
-            if visitor:
-                visitor_info = {
-                    "name": visitor.guardian_name,
-                    "phone": visitor.guardian_phone,
-                    "address": visitor.address,
-                    "members": visitor.members
-                }
 
     return render_template(
         "direct_message.html",
@@ -316,137 +304,71 @@ def direct_message():
         msg_status=msg_status
     )
 
-#Alert Sending Route
-
+# ========================= ALERT =========================
 @app.route('/send_alert/<int:image_id>/<int:query_id>')
 def send_alert(image_id, query_id):
 
     img = db.session.get(ImageModel, image_id)
     query_img = db.session.get(QueryImage, query_id)
 
-    # ---------------- SAFETY CHECK ----------------
     if not img or not query_img:
-        return render_template(
-            "alert_sent.html",
-            success=None,
-            error="Invalid image or query",
-            guardian_name="N/A",
-            guardian_phone="N/A"
-        )
+        return "Invalid data"
 
     visitor = img.visitor
 
-    guardian_name = visitor.guardian_name
-    guardian_phone_raw = visitor.guardian_phone
-    guardian_phone = normalize_phone(guardian_phone_raw)
+    guardian_phone = normalize_phone(visitor.guardian_phone)
 
     found_link = f"http://127.0.0.1:5000/reunification/{query_id}/found"
     not_found_link = f"http://127.0.0.1:5000/reunification/{query_id}/not_found"
 
-    # ---------------- PROCESS (optional tracking) ----------------
     process = QueryProcess(
         visitor_id=visitor.id,
         image_id=img.id,
         query_image_id=query_id,
-        guardian_phone=guardian_phone_raw,
         status="Still Processing"
     )
 
     db.session.add(process)
     db.session.commit()
 
-    success = None
-    error = None
-
-    # ---------------- NON TWILIO CASE ----------------
-    if guardian_phone != TWILIO_VERIFIED_NUMBER:
-
-        error = "Non-Twilio number (SMS not sent)"
-
-        return render_template(
-            "alert_sent.html",
-            success=None,
-            error=error,
-            guardian_name=guardian_name,
-            guardian_phone=guardian_phone_raw,
-            found_link=found_link,
-            not_found_link=not_found_link
-        )
-
-    # ---------------- TWILIO CASE ----------------
     try:
-
         twilio_client.messages.create(
-            body=(
-                f"Possible match found\n\n"
-                f"FOUND:\n{found_link}\n\n"
-                f"NOT FOUND:\n{not_found_link}"
-            ),
+            body=f"FOUND: {found_link}\nNOT FOUND: {not_found_link}",
             from_=TWILIO_PHONE,
             to=f"+91{guardian_phone}"
         )
-
-        success = "Alert sent successfully"
-
+        success = "Sent"
     except Exception as e:
-        error = str(e)
+        success = str(e)
 
-    return render_template(
-        "alert_sent.html",
-        success=success,
-        error=error,
-        guardian_name=guardian_name,
-        guardian_phone=guardian_phone_raw,
-        found_link=found_link,
-        not_found_link=not_found_linkS
-    )
+    return success
 
-# ========================= LIVE PROCESSING =========================
+# ========================= PROCESSING =========================
 @app.route('/processing')
 def processing():
 
-    processes = QueryProcess.query.order_by(
-        QueryProcess.created_at.desc()
-    ).all()
+    processes = QueryProcess.query.order_by(QueryProcess.created_at.desc()).all()
 
-    return render_template(
-        "processing.html",
-        processes=processes
-    )
+    return render_template("processing.html", processes=processes)
 
-# ========================= REUNIFICATION STATUS =========================
+# ========================= REUNIFICATION =========================
 @app.route('/reunification/<int:process_id>/<status>')
-def reunification_update(
-    process_id,
-    status
-):
+def reunification_update(process_id, status):
 
-    process = db.session.get(
-        QueryProcess,
-        process_id
-    )
+    process = db.session.get(QueryProcess, process_id)
 
     if not process:
         return "Invalid Process"
 
     if status == "found":
-
-        process.status = (
-            "Reunification Done"
-        )
-
-    elif status == "not_found":
-
-        process.status = (
-            "Person Not Found"
-        )
+        process.status = "Reunification Done"
+    else:
+        process.status = "Person Not Found"
 
     db.session.commit()
 
-    return render_template(
-        "reunification_response.html",
-        status=process.status
-    )
+    return render_template("reunification_response.html", status=process.status)
+
 # ========================= RUN =========================
 if __name__ == "__main__":
     app.run(debug=True)
