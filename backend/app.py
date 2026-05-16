@@ -89,5 +89,37 @@ def register():
         return "Internal Server Error", 500
 
 
+# ================= DELETE PAGE =================
+@app.route('/delete', methods=['GET', 'POST'])
+def delete():
+
+    if request.method == 'POST':
+
+        phone = request.form.get('guardian_phone')
+
+        if not phone:
+            return render_template("delete.html", message="Phone is required")
+
+        phone = normalize_phone(phone)
+
+        try:
+            # 🔥 DELETE FROM SUPABASE
+            result = supabase.table("registered_persons") \
+                .delete() \
+                .eq("guardian_phone", phone) \
+                .execute()
+
+            # check if anything deleted
+            if result.data:
+                return render_template("delete.html", message="Record deleted successfully")
+            else:
+                return render_template("delete.html", message="No record found for this phone")
+
+        except Exception as e:
+            return render_template("delete.html", message=f"Error: {str(e)}")
+
+    return render_template("delete.html")
+
+
 if __name__ == "__main__":
     app.run(debug=True)
