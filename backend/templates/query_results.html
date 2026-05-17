@@ -106,14 +106,15 @@ body{
 
                         </p>
 
-                        <!-- FIXED SEND ALERT BUTTON -->
+                        <!-- SEND ALERT BUTTON -->
                         <a href="{{ url_for(
                             'send_alert',
-                            image_id=match.image_id,
-                            query_id=match.query_id
+                            image_url=match.url,
+                            query_id=match.query_id,
+                            guardian_phone=match.guardian_phone,
+                            score=match.score
                         ) }}"
-
-                        class="mt-4 inline-block w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300">
+                        class="mt-4 inline-block w-full bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-300 text-center">
 
                             Send Alert
 
@@ -145,4 +146,5 @@ body{
 </div>
 
 </body>
+
 </html>

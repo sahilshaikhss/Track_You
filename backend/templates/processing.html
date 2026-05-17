@@ -41,7 +41,7 @@ object-fit:cover;
 <td>{{ p.id }}</td>
 
 <td>
-<img src="{{ url_for('get_query_image', image_id=p.query_image_id) }}">
+<img src="{{ p.query_image_url }}">
 </td>
 
 <td>
