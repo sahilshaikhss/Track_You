@@ -18,7 +18,7 @@ class EffNetCBIR:
     def __init__(
         self,
        input_shape=(300,300,3),
-        dataset_folder="dataset"
+        dataset_folder="faces_dataset"
     ):
 
         self.input_shape = input_shape

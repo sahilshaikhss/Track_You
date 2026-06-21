@@ -11,16 +11,19 @@ import tempfile
 import base64
 
 from model.face_effnet_cbir import EffNetCBIR
+from mtcnn import MTCNN
+import cv2
 
+detector = MTCNN()
 # ================= APP =================
 app = Flask(__name__)
 app.secret_key = "change_this_secret"
 
 # ================= SUPABASE =================
-#SUPABASE_URL = "https://kxmkdnrmnckkrzicesrj.supabase.co"
+#//SUPABASE_URL = "https://kxmkdnrmnckkrzicesrj.supabase.co"
 
 # USE SERVICE ROLE KEY HERE
-#SUPABASE_KEY = "sb_publishable_6BJt0uNBhuTAZK3V04paOQ_fGbfKMaU"
+#//SUPABASE_KEY = "sb_publishable_6BJt0uNBhuTAZK3V04paOQ_fGbfKMaU"
 
 supabase: SupabaseClient = create_client(
     SUPABASE_URL,
@@ -42,7 +45,7 @@ twilio_client = TwilioClient(
 cbir_model = EffNetCBIR()
 
 # ================= DATASET =================
-DATASET_PATH = "dataset"
+DATASET_PATH = "faces_dataset"
 
 os.makedirs(DATASET_PATH, exist_ok=True)
 
@@ -245,6 +248,61 @@ def register():
     )
 
 
+def crop_query_face(query_path):
+
+    os.makedirs("query_faces", exist_ok=True)
+
+    img = cv2.imread(query_path)
+
+    if img is None:
+        return query_path
+
+    rgb = cv2.cvtColor(
+        img,
+        cv2.COLOR_BGR2RGB
+    )
+
+    faces = detector.detect_faces(rgb)
+
+    if len(faces) == 0:
+        return query_path
+
+    face = max(
+        faces,
+        key=lambda f: f["box"][2] * f["box"][3]
+    )
+
+    x, y, w, h = face["box"]
+
+    x = max(0, x)
+    y = max(0, y)
+
+    margin = 30
+
+    x1 = max(0, x - margin)
+    y1 = max(0, y - margin)
+
+    x2 = min(rgb.shape[1], x + w + margin)
+    y2 = min(rgb.shape[0], y + h + margin)
+
+    face_crop = rgb[y1:y2, x1:x2]
+
+    crop_path = os.path.join(
+        "query_faces",
+        os.path.basename(query_path)
+    )
+
+    cv2.imwrite(
+        crop_path,
+        cv2.cvtColor(
+            face_crop,
+            cv2.COLOR_RGB2BGR
+        )
+    )
+
+    return crop_path
+
+
 # ================= DELETE =================
 @app.route('/delete', methods=['GET', 'POST'])
 def delete():
@@ -397,15 +455,12 @@ def query_upload():
     )
 
 
-# ================= PROCESS QUERY =================
 @app.route('/process_query', methods=['POST'])
 def process_query():
 
     try:
 
-        query_file = request.files.get(
-            "query_image"
-        )
+        query_file = request.files.get("query_image")
 
         if not query_file:
 
@@ -414,23 +469,39 @@ def process_query():
                 error="No image uploaded"
             )
 
-        # ================= SAVE QUERY IMAGE =================
-        file_ext = query_file.filename \
-            .rsplit(".", 1)[-1] \
-            .lower()
+        file_ext = query_file.filename.rsplit(".", 1)[-1].lower()
 
         filename = f"{int(time.time())}.{file_ext}"
 
         query_bytes = query_file.read()
 
+        # ================= SAVE ORIGINAL QUERY LOCALLY =================
+        os.makedirs("query_original", exist_ok=True)
+
+        local_query_path = os.path.join(
+            "query_original",
+            filename
+        )
+
+        with open(local_query_path, "wb") as f:
+            f.write(query_bytes)
+
+        # ================= CROP QUERY FACE =================
+        cropped_query = crop_query_face(
+            local_query_path
+        )
+
+        # ================= SEARCH USING CROPPED FACE =================
+        similar_paths, scores = cbir_model.query_image(
+            cropped_query
+        )
+
+        # ================= SAVE QUERY TO SUPABASE =================
         supabase.storage \
             .from_("query-images") \
             .upload(
-
                 filename,
-
                 query_bytes,
-
                 file_options={
                     "content-type": query_file.mimetype,
                     "upsert": "true"
@@ -444,40 +515,22 @@ def process_query():
         query_insert = supabase.table(
             "query_images"
         ).insert({
-
             "image_path": query_public_url
-
         }).execute()
 
         query_id = query_insert.data[0]["id"]
 
-        # ================= TEMP QUERY =================
-        temp_query = tempfile.NamedTemporaryFile(
-            delete=False,
-            suffix=".jpg"
-        )
-
-        temp_query.write(query_bytes)
-
-        temp_query.close()
-
-        # ================= SEARCH =================
-        similar_paths, scores = (
-               cbir_model.query_image(
-               temp_query.name
-                )
-                )
-
+        # ================= BUILD RESULTS =================
         matches = []
 
         for path, score in zip(
             similar_paths,
             scores
-             ):
+        ):
 
-            filename = os.path.basename(path)
+            filename_db = os.path.basename(path)
 
-            guardian_phone = filename.split("_")[0]
+            guardian_phone = filename_db.split("_")[0]
 
             visitor = supabase.table(
                 "registered_persons"
@@ -493,11 +546,12 @@ def process_query():
 
             visitor = visitor.data[0]
 
-            image_name = filename.split(
+            image_name = filename_db.split(
                 "_",
                 1
             )[1]
 
+            # ORIGINAL IMAGE URL
             image_url = supabase.storage \
                 .from_("faces") \
                 .get_public_url(
@@ -508,7 +562,7 @@ def process_query():
 
                 "visitor": visitor,
 
-               "score": f"{score:.2f}%",
+                "score": f"{score:.2f}%",
 
                 "url": image_url,
 
@@ -517,14 +571,9 @@ def process_query():
                 "guardian_phone": guardian_phone
             })
 
-        os.unlink(temp_query.name)
-
         return render_template(
-
             "query_results.html",
-
             matches=matches,
-
             query_image_url=query_public_url
         )
 
@@ -534,8 +583,6 @@ def process_query():
             "query_results.html",
             error=str(e)
         )
-
-
 # ================= SEND ALERT =================
 @app.route('/send_alert')
 def send_alert():
