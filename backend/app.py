@@ -20,10 +20,10 @@ app = Flask(__name__)
 app.secret_key = "change_this_secret"
 
 # ================= SUPABASE =================
-#//SUPABASE_URL = "https://kxmkdnrmnckkrzicesrj.supabase.co"
+SUPABASE_URL = "https://kxmkdnrmnckkrzicesrj.supabase.co"
 
 # USE SERVICE ROLE KEY HERE
-#//SUPABASE_KEY = "sb_publishable_6BJt0uNBhuTAZK3V04paOQ_fGbfKMaU"
+SUPABASE_KEY = "sb_publishable_6BJt0uNBhuTAZK3V04paOQ_fGbfKMaU"
 
 supabase: SupabaseClient = create_client(
     SUPABASE_URL,
@@ -31,8 +31,8 @@ supabase: SupabaseClient = create_client(
 )
 
 # ================= TWILIO =================
-#TWILIO_SID = "AC5d23e6db2fd9d27a21df02ca77a84498"
-#TWILIO_AUTH = "79e2f740e80507f077c09e11e2e16c0e"
+TWILIO_SID = "AC5d23e6db2fd9d27a21df02ca77a84498"
+TWILIO_AUTH = "64570b5062c46ec8f8beb73cd9a9c7de"
 
 TWILIO_PHONE = "+14784009309"
 
@@ -613,8 +613,7 @@ def send_alert():
 
         return "Invalid query"
 
-    query_image_url = query_data \
-        .data[0]["image_path"]
+    query_image_url = query_data.data[0]["image_path"]
 
     process = supabase.table(
         "query_process"
@@ -647,7 +646,6 @@ def send_alert():
     )
 
     success = None
-
     error = None
 
     try:
@@ -671,6 +669,25 @@ def send_alert():
 
         error = str(e)
 
+    # ================= GET GUARDIAN INFO =================
+    guardian = supabase.table(
+        "registered_persons"
+    ).select("*") \
+     .eq("guardian_phone", guardian_phone) \
+     .execute()
+
+    print("PHONE:", guardian_phone)
+    print("GUARDIAN DATA:", guardian.data)
+
+    guardian_name = "Not available"
+
+    if guardian.data:
+
+        guardian_name = guardian.data[0].get(
+            "guardian_name",
+            "Not available"
+        )
+
     return render_template(
 
         "alert_sent.html",
@@ -679,14 +696,14 @@ def send_alert():
 
         error=error,
 
+        guardian_name=guardian_name,
+
         guardian_phone=guardian_phone,
 
         found_link=found_link,
 
         not_found_link=not_found_link
     )
-
-
 # ================= REUNIFICATION =================
 @app.route('/reunification/<int:process_id>/<status>')
 def reunification_update(
