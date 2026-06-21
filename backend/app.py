@@ -17,10 +17,10 @@ app = Flask(__name__)
 app.secret_key = "change_this_secret"
 
 # ================= SUPABASE =================
-SUPABASE_URL = "https://kxmkdnrmnckkrzicesrj.supabase.co"
+#SUPABASE_URL = "https://kxmkdnrmnckkrzicesrj.supabase.co"
 
 # USE SERVICE ROLE KEY HERE
-SUPABASE_KEY = "sb_publishable_6BJt0uNBhuTAZK3V04paOQ_fGbfKMaU"
+#SUPABASE_KEY = "sb_publishable_6BJt0uNBhuTAZK3V04paOQ_fGbfKMaU"
 
 supabase: SupabaseClient = create_client(
     SUPABASE_URL,
@@ -28,8 +28,8 @@ supabase: SupabaseClient = create_client(
 )
 
 # ================= TWILIO =================
-TWILIO_SID = "AC5d23e6db2fd9d27a21df02ca77a84498"
-TWILIO_AUTH = "79e2f740e80507f077c09e11e2e16c0e"
+#TWILIO_SID = "AC5d23e6db2fd9d27a21df02ca77a84498"
+#TWILIO_AUTH = "79e2f740e80507f077c09e11e2e16c0e"
 
 TWILIO_PHONE = "+14784009309"
 
