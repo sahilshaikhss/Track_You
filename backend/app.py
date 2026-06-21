@@ -10,7 +10,7 @@ import requests
 import tempfile
 import base64
 
-from model.face_facenet_cbir import FaceNetCBIR
+from model.face_effnet_cbir import EffNetCBIR
 
 # ================= APP =================
 app = Flask(__name__)
@@ -28,8 +28,8 @@ supabase: SupabaseClient = create_client(
 )
 
 # ================= TWILIO =================
-#TWILIO_SID = "AC5d23e6db2fd9d27a21df02ca77a84498#"
-#TWILIO_AUTH = "ee2fb1328b8559bc365b9cf1ebf70457#"
+TWILIO_SID = "AC5d23e6db2fd9d27a21df02ca77a84498"
+TWILIO_AUTH = "79e2f740e80507f077c09e11e2e16c0e"
 
 TWILIO_PHONE = "+14784009309"
 
@@ -39,7 +39,7 @@ twilio_client = TwilioClient(
 )
 
 # ================= FACENET =================
-cbir_model = FaceNetCBIR()
+cbir_model = EffNetCBIR()
 
 # ================= DATASET =================
 DATASET_PATH = "dataset"
@@ -192,6 +192,13 @@ def register():
                 file_path = f"{phone}/{count}.{file_ext}"
 
                 file_bytes = f.read()
+                local_path = os.path.join(
+                 DATASET_PATH,
+                    f"{phone}_{count}.{file_ext}"
+                               )
+
+                with open(local_path, "wb") as img_file:
+                  img_file.write(file_bytes)
 
                 # upload to supabase
                 supabase.storage \
@@ -225,11 +232,11 @@ def register():
                 count += 1
 
     # ================= AUTO SYNC =================
-    sync_faces_dataset()
+    #sync_faces_dataset()
 
-    cbir_model.build_image_database(
-        DATASET_PATH
-    )
+   ## cbir_model.build_image_database(
+    #    DATASET_PATH
+   # )
 
     return render_template(
         "success.html",
@@ -455,18 +462,18 @@ def process_query():
         temp_query.close()
 
         # ================= SEARCH =================
-        similar_paths, distances = (
-            cbir_model.query_image(
-                temp_query.name
-            )
-        )
+        similar_paths, scores = (
+               cbir_model.query_image(
+               temp_query.name
+                )
+                )
 
         matches = []
 
-        for path, dist in zip(
+        for path, score in zip(
             similar_paths,
-            distances
-        ):
+            scores
+             ):
 
             filename = os.path.basename(path)
 
@@ -501,7 +508,7 @@ def process_query():
 
                 "visitor": visitor,
 
-                "score": f"{(1 - dist) * 100:.2f}%",
+               "score": f"{score:.2f}%",
 
                 "url": image_url,
 
@@ -705,4 +712,7 @@ if __name__ == "__main__":
 
         print("Database build skipped:", e)
 
-    app.run(debug=True)
+    app.run(
+    debug=True,
+    use_reloader=False
+)
