@@ -9,21 +9,36 @@ import os
 import requests
 import tempfile
 import base64
-
+from watcher import start_watcher
 from model.face_effnet_cbir import EffNetCBIR
 from mtcnn import MTCNN
 import cv2
 
+
+import threading
+import time
+
+import model.face_effnet_cbir
+
+print(
+    "MODEL FILE:",
+    model.face_effnet_cbir.__file__
+)
+
+print(
+    "HAS ADD METHOD:",
+    hasattr(EffNetCBIR, "add_new_image")
+)
 detector = MTCNN()
 # ================= APP =================
 app = Flask(__name__)
 app.secret_key = "change_this_secret"
 
 # ================= SUPABASE =================
-SUPABASE_URL = "https://kxmkdnrmnckkrzicesrj.supabase.co"
+#@@@SUPABASE_URL = "https://kxmkdnrmnckkrzicesrj.supabase.co"
 
 # USE SERVICE ROLE KEY HERE
-SUPABASE_KEY = "sb_publishable_6BJt0uNBhuTAZK3V04paOQ_fGbfKMaU"
+#@@@@@SUPABASE_KEY = "sb_publishable_6BJt0uNBhuTAZK3V04paOQ_fGbfKMaU"
 
 supabase: SupabaseClient = create_client(
     SUPABASE_URL,
@@ -31,8 +46,8 @@ supabase: SupabaseClient = create_client(
 )
 
 # ================= TWILIO =================
-TWILIO_SID = "AC5d23e6db2fd9d27a21df02ca77a84498"
-TWILIO_AUTH = "64570b5062c46ec8f8beb73cd9a9c7de"
+#SSSSTWILIO_SID = "AC5d23e6db2fd9d27a21df02ca77a84498###"
+#@DDDTWILIO_AUTH = "64570b5062c46ec8f8beb73cd9a9c7de###"
 
 TWILIO_PHONE = "+14784009309"
 
@@ -41,14 +56,15 @@ twilio_client = TwilioClient(
     TWILIO_AUTH
 )
 
-# ================= FACENET =================
+# ================= EFFNETCBIR =================
 cbir_model = EffNetCBIR()
 
 # ================= DATASET =================
-DATASET_PATH = "faces_dataset"
+ORIGINAL_DATASET_PATH = "dataset"
+FACES_DATASET_PATH = "faces_dataset"
 
-os.makedirs(DATASET_PATH, exist_ok=True)
-
+os.makedirs(ORIGINAL_DATASET_PATH, exist_ok=True)
+os.makedirs(FACES_DATASET_PATH, exist_ok=True)
 # ================= UTIL =================
 def normalize_phone(phone):
 
@@ -88,9 +104,9 @@ def sync_faces_dataset():
         local_filename = f"{phone}_{filename}"
 
         local_path = os.path.join(
-            DATASET_PATH,
-            local_filename
-        )
+        ORIGINAL_DATASET_PATH,
+          local_filename
+                )
 
         # skip existing
         if os.path.exists(local_path):
@@ -196,9 +212,9 @@ def register():
 
                 file_bytes = f.read()
                 local_path = os.path.join(
-                 DATASET_PATH,
-                    f"{phone}_{count}.{file_ext}"
-                               )
+                ORIGINAL_DATASET_PATH,
+                f"{phone}_{count}.{file_ext}"
+                )
 
                 with open(local_path, "wb") as img_file:
                   img_file.write(file_bytes)
@@ -488,12 +504,12 @@ def process_query():
 
         # ================= CROP QUERY FACE =================
         cropped_query = crop_query_face(
-            local_query_path
-        )
+        local_query_path
+                    )
 
-        # ================= SEARCH USING CROPPED FACE =================
+# ================= SEARCH USING CROPPED FACE =================
         similar_paths, scores = cbir_model.query_image(
-            cropped_query
+        cropped_query
         )
 
         # ================= SAVE QUERY TO SUPABASE =================
@@ -759,24 +775,275 @@ def processing():
     )
 
 
-# ================= RUN =================
-if __name__ == "__main__":
+def auto_crop_faces():
 
-    sync_faces_dataset()
+    detector = MTCNN()
+
+    valid_ext = (
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".bmp"
+    )
+
+    print("👀 Face crop watcher started")
+
+
+    while True:
+
+        try:
+
+            for filename in os.listdir(
+                ORIGINAL_DATASET_PATH
+            ):
+
+                if not filename.lower().endswith(valid_ext):
+                    continue
+
+
+                input_path = os.path.join(
+                    ORIGINAL_DATASET_PATH,
+                    filename
+                )
+
+
+                output_path = os.path.join(
+                    FACES_DATASET_PATH,
+                    filename
+                )
+
+
+                # already cropped
+                if os.path.exists(output_path):
+                    continue
+
+
+
+                img = cv2.imread(
+                    input_path
+                )
+
+
+                if img is None:
+                    continue
+
+
+
+                rgb = cv2.cvtColor(
+                    img,
+                    cv2.COLOR_BGR2RGB
+                )
+
+
+                faces = detector.detect_faces(
+                    rgb
+                )
+
+
+                if len(faces) == 0:
+
+                    print(
+                        "No face:",
+                        filename
+                    )
+
+                    continue
+
+
+
+                face = max(
+                    faces,
+                    key=lambda f:
+                    f["box"][2] *
+                    f["box"][3]
+                )
+
+
+                x, y, w, h = face["box"]
+
+
+                margin = 30
+
+
+                x1 = max(
+                    0,
+                    x-margin
+                )
+
+                y1 = max(
+                    0,
+                    y-margin
+                )
+
+
+                x2 = min(
+                    rgb.shape[1],
+                    x+w+margin
+                )
+
+
+                y2 = min(
+                    rgb.shape[0],
+                    y+h+margin
+                )
+
+
+                crop = rgb[
+                    y1:y2,
+                    x1:x2
+                ]
+
+
+                cv2.imwrite(
+                    output_path,
+                    cv2.cvtColor(
+                        crop,
+                        cv2.COLOR_RGB2BGR
+                    )
+                )
+
+
+                print(
+                    "✅ Cropped:",
+                    filename
+                )
+
+
+            # scan every 5 seconds
+            time.sleep(5)
+
+
+        except Exception as e:
+
+            print(
+                "Crop watcher error:",
+                e
+            )
+
+            time.sleep(5)
+def auto_sync():
+
+    # wait after app start
+    time.sleep(30)
+
+
+    while True:
+
+        try:
+
+            print("🔄 Syncing dataset...")
+
+            sync_faces_dataset()
+
+            print("✅ Dataset synced")
+
+
+        except Exception as e:
+
+            print(
+                f"❌ Sync failed: {e}"
+            )
+
+
+        time.sleep(60)
+
+
+def update_model_with_new_face(face_path):
 
     try:
 
-        cbir_model.build_image_database(
-            DATASET_PATH
+        print(
+            "🧠 Updating model with:",
+            face_path
         )
 
-        print("Face database loaded")
+
+        cbir_model.add_new_image(
+            face_path
+        )
+
+
+        print(
+            "✅ New face added to search database"
+        )
+
 
     except Exception as e:
 
-        print("Database build skipped:", e)
+        print(
+            "❌ Incremental update failed:",
+            e
+        )
+# ================= RUN =================
+
+if __name__ == "__main__":
+
+    print("\n==============================")
+    print("🚀 Starting Lost Person System")
+    print("==============================\n")
+
+
+    # Build model once from existing faces_dataset
+
+    try:
+
+        print(
+            "🧠 Loading face database..."
+        )
+
+        cbir_model.build_image_database(
+            FACES_DATASET_PATH
+        )
+
+        print(
+            "✅ Face database loaded"
+        )
+
+
+    except Exception as e:
+
+        print(
+            "❌ Model loading error:",
+            e
+        )
+
+
+
+    # Supabase sync watcher
+
+    threading.Thread(
+        target=auto_sync,
+        daemon=True
+    ).start()
+
+
+
+    # New image crop watcher
+
+    threading.Thread(
+        target=start_watcher,
+        args=(
+            ORIGINAL_DATASET_PATH,
+            FACES_DATASET_PATH,
+            update_model_with_new_face
+        ),
+        daemon=True
+    ).start()
+
+
+
+    print(
+        "🔄 Supabase sync watcher running"
+    )
+
+    print(
+        "🙂 MTCNN crop watcher running"
+    )
+
 
     app.run(
-    debug=True,
-    use_reloader=False
-)
+        host="0.0.0.0",
+        port=5000,
+        debug=True,
+        use_reloader=False
+    )

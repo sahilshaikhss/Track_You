@@ -188,6 +188,86 @@ class EffNetCBIR:
             f"✅ Database built with {len(self.image_paths)} images."
         )
 
+    def add_new_image(
+        self,
+        image_path
+    ):
+
+        print(
+            f"➕ Adding new image: {image_path}"
+        )
+
+
+        # Extract feature only for new image
+
+        feature_vector = self.extract_features(
+            image_path
+        )
+
+
+        if feature_vector is None:
+
+            print(
+                "❌ Feature extraction failed"
+            )
+
+            return False
+
+
+
+        # If model database is empty
+
+        if self.features.size == 0:
+
+
+            self.features = np.array(
+                [feature_vector]
+            )
+
+            self.image_paths = np.array(
+                [image_path]
+            )
+
+
+        else:
+
+
+            # Add new feature
+
+            self.features = np.vstack(
+                [
+                    self.features,
+                    feature_vector
+                ]
+            )
+
+
+            # Add new image path
+
+            self.image_paths = np.append(
+                self.image_paths,
+                image_path
+            )
+
+
+
+        # Update KNN
+
+        self.knn.fit(
+            self.features
+        )
+
+
+        print(
+            f"✅ New image added. Total images: {len(self.image_paths)}"
+        )
+
+
+        return True  
+
+
+
+
     def query_image(
         self,
         query_img_path,
