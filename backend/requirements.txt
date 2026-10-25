@@ -9,4 +9,5 @@ twilio
 Pillow
 numpy
 scikit-learn
+mtcnn[tensorflow]>=1.0,<2.0
 opencv-python
