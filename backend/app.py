@@ -35,10 +35,10 @@ app = Flask(__name__)
 app.secret_key = "change_this_secret"
 
 # ================= SUPABASE =================
-#@@@SUPABASE_URL = "https://kxmkdnrmnckkrzicesrj.supabase.co"
+SUPABASE_URL = "https://kxmkdnrmnckkrzicesrj.supabase.co"
 
 # USE SERVICE ROLE KEY HERE
-#@@@@@SUPABASE_KEY = "sb_publishable_6BJt0uNBhuTAZK3V04paOQ_fGbfKMaU"
+SUPABASE_KEY = "sb_publishable_6BJt0uNBhuTAZK3V04paOQ_fGbfKMaU"
 
 supabase: SupabaseClient = create_client(
     SUPABASE_URL,
@@ -46,8 +46,8 @@ supabase: SupabaseClient = create_client(
 )
 
 # ================= TWILIO =================
-#SSSSTWILIO_SID = "AC5d23e6db2fd9d27a21df02ca77a84498###"
-#@DDDTWILIO_AUTH = "64570b5062c46ec8f8beb73cd9a9c7de###"
+TWILIO_SID = "AC5d23e6db2fd9d27a21df02ca77a84498"
+TWILIO_AUTH = "2ac9cfd68d93450fda914d7183540ab6"
 
 TWILIO_PHONE = "+14784009309"
 
@@ -57,6 +57,7 @@ twilio_client = TwilioClient(
 )
 
 # ================= EFFNETCBIR =================
+
 cbir_model = EffNetCBIR()
 
 # ================= DATASET =================
@@ -65,6 +66,7 @@ FACES_DATASET_PATH = "faces_dataset"
 
 os.makedirs(ORIGINAL_DATASET_PATH, exist_ok=True)
 os.makedirs(FACES_DATASET_PATH, exist_ok=True)
+
 # ================= UTIL =================
 def normalize_phone(phone):
 
@@ -669,10 +671,10 @@ def send_alert():
         twilio_client.messages.create(
 
             body=(
-                f"Possible Match Found\n\n"
-                f"FOUND:\n{found_link}\n\n"
-                f"NOT FOUND:\n{not_found_link}"
-            ),
+               "🚨 Possible Match!\n\n"
+               "Your family member may be at:\n"
+               "📍 AI & DS Dept., 3rd Floor."
+                 ),
 
             from_=TWILIO_PHONE,
 
