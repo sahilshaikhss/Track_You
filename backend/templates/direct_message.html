@@ -3,61 +3,176 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Direct Message to Guardian</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style> body { font-family: 'Inter', sans-serif; } </style>
+<meta name="theme-color" content="#0f1b2d">
+<title>Track You | Message Guardian</title>
+<style>
+:root{--ink:#0f1b2d;--text:#18253a;--muted:#62728a;--line:#dce3ee;--bg:#eef2f8;--blue:#2f6fed;--blue-d:#2358c4;--amber:#ffb347;--ok:#16875a;--ok-d:#106d49;--okbg:#e4f5ec;--err:#c0392b;--errbg:#fdf3f1}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(80% 40% at 50% 0,#dfe8fb 0,transparent 70%),var(--bg);color:var(--text);font:15px/1.55 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,textarea,a{font:inherit;color:inherit}
+.top{display:flex;align-items:center;justify-content:space-between;height:64px;padding:0 clamp(16px,4vw,48px)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px}
+.logo{width:34px;height:34px;border-radius:9px;background:var(--ink);display:grid;place-items:center}
+.logo svg{width:20px;height:20px}
+.home{color:var(--muted);font-size:14px;text-decoration:none;padding:6px 10px;border-radius:8px}
+.home:hover{background:#fff;color:var(--text)}.home:focus-visible{outline:2px solid var(--blue)}
+.page{width:min(640px,calc(100% - 28px));margin:18px auto 56px}
+.head{margin-bottom:18px}
+h1{margin:0 0 6px;font-size:clamp(26px,4.5vw,33px);letter-spacing:-.7px;line-height:1.15}
+.head p{margin:0;color:var(--muted)}
+.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:clamp(18px,4vw,30px);box-shadow:0 1px 2px #10213a0d,0 20px 44px #10213a12}
+.sec+.sec{margin-top:24px;padding-top:24px;border-top:1px solid var(--line)}
+.sec h2{margin:0 0 3px;font-size:16px}.sec>p{margin:0 0 14px;color:var(--muted);font-size:13.5px}
+label.l{display:block;margin:0 0 6px;font-size:13px;font-weight:600}
+.opt{color:var(--muted);font-weight:400}
+.field{position:relative}
+.field svg{position:absolute;left:13px;top:14px;width:18px;height:18px;color:#8c9bb2;pointer-events:none}
+.control{width:100%;height:48px;padding:0 14px 0 42px;border:1px solid #c7d1e0;border-radius:11px;background:#fff;font-size:15px;transition:.15s}
+textarea.control{height:130px;padding:12px 14px;resize:vertical;line-height:1.5}
+.control::placeholder{color:#9aa8bd}
+.control:hover{border-color:#a3b3cb}
+.control:focus{outline:0;border-color:var(--blue);box-shadow:0 0 0 4px #2f6fed1f}
+.control.bad{border-color:var(--err);box-shadow:0 0 0 4px #c0392b14}
+.hint{min-height:20px;margin:6px 0 0;font-size:12.5px;color:var(--muted)}.hint.err{color:var(--err)}
+.row{display:flex;gap:10px;margin-top:12px}
+.btn{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 16px;border:0;border-radius:11px;font-weight:700;font-size:15px;cursor:pointer;transition:.15s}
+.btn svg{width:18px;height:18px}
+.btn:focus-visible{outline:3px solid #2f6fed55;outline-offset:2px}
+.btn.s{background:#fff;border:1px solid #c7d1e0}.btn.s:hover{border-color:var(--blue);color:var(--blue);background:#f5f8ff}
+.btn.p{background:var(--ok);color:#fff;box-shadow:0 8px 18px #16875a2e}.btn.p:hover{background:var(--ok-d)}
+.btn:disabled{opacity:.75;cursor:progress}
+.spin{display:none;width:16px;height:16px;border:2px solid #ffffff66;border-top-color:#fff;border-radius:50%;animation:rot .7s linear infinite}
+.s .spin{border-color:#c7d1e0;border-top-color:var(--blue)}
+.btn.busy .spin{display:block}.btn.busy svg{display:none}
+@keyframes rot{to{transform:rotate(360deg)}}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 10px}
+.chip{border:1px solid var(--line);background:#f4f7fc;border-radius:99px;padding:5px 12px;font-size:12.5px;color:var(--muted);cursor:pointer;transition:.15s}
+.chip:hover{border-color:var(--blue);color:var(--blue);background:#eef4ff}.chip:focus-visible{outline:2px solid var(--blue)}
+.meta{display:flex;justify-content:space-between;gap:10px;margin-top:6px;font-size:12.5px;color:var(--muted)}
+.info{margin-top:22px;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:#fff;box-shadow:0 1px 2px #10213a0d,0 14px 30px #10213a0d;animation:in .3s ease}
+@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.ih{display:flex;align-items:center;gap:14px;padding:16px 18px;background:#f7f9fd;border-bottom:1px solid var(--line)}
+.av{width:48px;height:48px;border-radius:13px;background:var(--ink);color:var(--amber);display:grid;place-items:center;font-weight:700;font-size:17px;flex:none}
+.ih small{display:block;font-size:12px;color:var(--muted)}.ih b{display:block;font-size:16px}
+.found{margin-left:auto;padding:3px 10px;border-radius:99px;background:var(--okbg);color:var(--ok);font-size:12px;font-weight:700;flex:none}
+.dl{display:grid;margin:0}
+.dl div{display:grid;grid-template-columns:100px 1fr;gap:10px;padding:11px 18px;font-size:14px}
+.dl div+div{border-top:1px solid #eef2f6}
+.dl dt{color:var(--muted)}.dl dd{margin:0;font-weight:600;word-break:break-word}
+.status{display:flex;gap:10px;margin-top:18px;padding:12px 14px;border-radius:12px;font-weight:600;font-size:14px;animation:in .25s ease}
+.status svg{width:19px;height:19px;flex:none;margin-top:2px}
+.status.ok{background:var(--okbg);color:#0f6a47}.status.bad{background:var(--errbg);color:#9c2a1f}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;padding:10px 18px;border-radius:10px;background:var(--ink);color:#fff;font-size:14px;pointer-events:none;transition:.25s}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media(max-width:480px){.row{flex-direction:column}.dl div{grid-template-columns:1fr;gap:1px}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+<body>
+<header class="top">
+  <div class="brand"><div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#ffb347" stroke-width="2" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><circle cx="12" cy="11" r="2.5"/><path d="M7.5 17c.8-2 2.5-3 4.5-3s3.7 1 4.5 3"/></svg></div>Track You</div>
+  <a class="home" href="/">Home</a>
+</header>
 
-<div class="w-full max-w-xl bg-white p-8 rounded-2xl shadow-lg">
-    <h2 class="text-3xl font-bold text-center text-gray-800 mb-6">Direct Message to Guardian</h2>
+<main class="page">
+  <div class="head">
+    <h1>Message a guardian</h1>
+    <p>Look up a registered guardian by phone number, then send them a text message.</p>
+  </div>
 
-    <form method="POST" class="space-y-4">
-        <div>
-            <label for="guardian_phone" class="block text-sm font-medium text-gray-600 mb-1">Guardian Phone</label>
-            <input type="text" id="guardian_phone" name="guardian_phone" required
-                   class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500">
+  <section class="card">
+    <form id="f" method="POST" novalidate>
+      <input type="hidden" name="action" id="action" value="">
+
+      <div class="sec">
+        <h2>Find the guardian</h2>
+        <p>Use the number they registered with.</p>
+        <label class="l" for="guardian_phone">Guardian phone</label>
+        <div class="field">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2Z"/></svg>
+          <input class="control" type="tel" inputmode="tel" id="guardian_phone" name="guardian_phone" placeholder="+91 98765 43210" autocomplete="off" required>
         </div>
-
-        <div class="flex gap-4">
-            <button type="submit" name="action" value="search"
-                    class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg">Search</button>
-            <button type="submit" name="action" value="send"
-                    class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg">Send</button>
+        <p class="hint" id="phint">Include the country code, for example +91.</p>
+        <div class="row">
+          <button type="submit" class="btn s" data-action="search"><span class="spin"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span class="bt">Search</span></button>
         </div>
+      </div>
 
-        <div>
-            <label for="message" class="block text-sm font-medium text-gray-600 mb-1">Message</label>
-            <textarea id="message" name="message" rows="3"
-                      class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Type your message here..."></textarea>
+      {% if visitor_info %}
+      <div class="info" aria-label="Registered guardian details">
+        <div class="ih">
+          <div class="av" id="av" aria-hidden="true">?</div>
+          <div><small>Registered guardian</small><b>{{ visitor_info.name }}</b></div>
+          <span class="found">Found</span>
         </div>
+        <dl class="dl">
+          <div><dt>Phone</dt><dd>{{ visitor_info.phone }}</dd></div>
+          <div><dt>Address</dt><dd>{{ visitor_info.address or 'N/A' }}</dd></div>
+          <div><dt>Members</dt><dd>{{ visitor_info.members or 'N/A' }}</dd></div>
+        </dl>
+      </div>
+      {% endif %}
+
+      <div class="sec">
+        <h2>Write your message</h2>
+        <p>Sent as a text message to the number above.</p>
+        <div class="chips" aria-label="Quick messages">
+          <button type="button" class="chip" data-t="We may have found a member of your family. Please contact us as soon as you can.">Possible match</button>
+          <button type="button" class="chip" data-t="Please call us back on this number. We have important news about your family.">Please call back</button>
+          <button type="button" class="chip" data-t="Thank you for your help. The matter has been resolved.">Resolved</button>
+        </div>
+        <label class="l" for="message">Message <span class="opt">(required to send)</span></label>
+        <textarea class="control" id="message" name="message" rows="4" placeholder="Type your message here..." maxlength="600"></textarea>
+        <div class="meta"><span class="hint" id="mhint" style="margin:0;min-height:0">Keep it short and clear.</span><span id="cnt">0 characters</span></div>
+        <div class="row">
+          <button type="submit" class="btn p" data-action="send"><span class="spin"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 3L10 14M21 3l-7 18-4-7-7-4 18-7Z"/></svg><span class="bt">Send message</span></button>
+        </div>
+      </div>
     </form>
 
-    <!-- Visitor Info -->
-    {% if visitor_info %}
-    <div class="mt-6 p-4 border border-gray-200 rounded-lg bg-gray-50">
-        <h3 class="text-lg font-semibold text-gray-700 mb-2">Registered Guardian Details</h3>
-        <p><strong>Name:</strong> {{ visitor_info.name }}</p>
-        <p><strong>Phone:</strong> {{ visitor_info.phone }}</p>
-        <p><strong>Address:</strong> {{ visitor_info.address or 'N/A' }}</p>
-        <p><strong>Members:</strong> {{ visitor_info.members or 'N/A' }}</p>
+    {% if msg_status %}
+    <div class="status {% if 'Error' in msg_status or 'No' in msg_status %}bad{% else %}ok{% endif %}" role="status">
+      {% if 'Error' in msg_status or 'No' in msg_status %}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v6M12 16.5v.5"/></svg>
+      {% else %}
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l3 3 5-6"/></svg>
+      {% endif %}
+      <span>{{ msg_status }}</span>
     </div>
     {% endif %}
+  </section>
+</main>
 
-    <!-- Message Status -->
-    {% if msg_status %}
-<div class="mt-4 p-3 rounded-lg font-semibold
-    {% if 'Error' in msg_status or 'No' in msg_status %}
-        bg-red-100 text-red-800
-    {% else %}
-        bg-green-100 text-green-800
-    {% endif %}">
-    {{ msg_status }}
-</div>
-{% endif %}
-</div>
+<div class="toast" id="toast" role="status"></div>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i)};
+  var f=$('f'),ph=$('guardian_phone'),msg=$('message');
+  function ok(v){var d=v.replace(/\D/g,'');return d.length>=10&&d.length<=13}
+  function phErr(t){ph.classList.toggle('bad',!!t);var h=$('phint');h.textContent=t||'Include the country code, for example +91.';h.classList.toggle('err',!!t)}
+  function msgErr(t){msg.classList.toggle('bad',!!t);var h=$('mhint');h.textContent=t||'Keep it short and clear.';h.classList.toggle('err',!!t)}
 
+  ph.addEventListener('input',function(){ph.value=ph.value.replace(/[^\d+\s()-]/g,'');if(ph.value)phErr(ok(ph.value)?'':'Enter at least 10 digits.')});
+  msg.addEventListener('input',function(){
+    var n=msg.value.length;$('cnt').textContent=n+(n===1?' character':' characters')+(n>160?' \u00b7 may be sent as '+Math.ceil(n/153)+' texts':'');
+    if(n)msgErr('')});
+
+  document.querySelectorAll('.chip').forEach(function(c){c.onclick=function(){msg.value=c.dataset.t;msg.dispatchEvent(new Event('input'));msg.focus()}});
+
+  var info=$('av');
+  if(info){var n=(document.querySelector('.ih b')||{}).textContent;
+    if(n){var p=n.trim().split(/\s+/);info.textContent=((p[0]||'')[0]+(p.length>1?p[p.length-1][0]:'')).toUpperCase()}}
+
+  f.addEventListener('submit',function(e){
+    var s=e.submitter;if(!s){e.preventDefault();return}
+    var act=s.dataset.action,bad=false;
+    if(!ok(ph.value)){phErr('Enter a valid phone number (at least 10 digits).');ph.focus();bad=true}
+    if(!bad&&act==='send'&&!msg.value.trim()){msgErr('Write a message before sending.');msg.focus();bad=true}
+    if(bad){e.preventDefault();return}
+    $('action').value=act;
+    s.classList.add('busy');s.querySelector('.bt').textContent=act==='send'?'Sending\u2026':'Searching\u2026';
+    setTimeout(function(){document.querySelectorAll('.btn').forEach(function(b){b.disabled=true})},0)});
+})();
+</script>
 </body>
 </html>

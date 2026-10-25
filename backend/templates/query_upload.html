@@ -3,31 +3,228 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Search by Image</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>body { font-family: 'Inter', sans-serif; }</style>
+<meta name="theme-color" content="#0f1b2d">
+<title>Track You | Search by Image</title>
+<style>
+:root{--ink:#0f1b2d;--text:#18253a;--muted:#62728a;--line:#dce3ee;--bg:#eef2f8;--blue:#2f6fed;--blue-d:#2358c4;--amber:#ffb347;--ok:#16875a;--err:#c0392b}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:radial-gradient(90% 50% at 50% 0,#dfe8fb 0,transparent 70%),var(--bg);color:var(--text);font:15px/1.55 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button,input{font:inherit;color:inherit}
+.top{display:flex;align-items:center;justify-content:space-between;height:64px;padding:0 clamp(16px,4vw,48px)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px}
+.logo{width:34px;height:34px;border-radius:9px;background:var(--ink);display:grid;place-items:center}
+.logo svg{width:20px;height:20px}
+.pill{display:flex;align-items:center;gap:7px;padding:5px 12px;border-radius:99px;background:#fff;border:1px solid var(--line);font-size:12.5px;color:var(--muted)}
+.pill i{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px #16875a22}
+.page{width:min(560px,calc(100% - 28px));margin:28px auto 56px}
+.head{text-align:center;margin-bottom:22px}
+.head h1{margin:0 0 8px;font-size:clamp(28px,5vw,36px);letter-spacing:-.8px;line-height:1.15}
+.head p{margin:0 auto;max-width:42ch;color:var(--muted)}
+.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:clamp(18px,4vw,30px);box-shadow:0 1px 2px #10213a0d,0 20px 44px #10213a12}
+.drop{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:34px 20px;border:1.5px dashed #a9b8d0;border-radius:16px;background:#f7f9fd;text-align:center;cursor:pointer;transition:.15s}
+.drop:hover,.drop.drag{border-color:var(--blue);background:#eef4ff}
+.drop:focus-within{outline:3px solid #2f6fed40;outline-offset:2px}
+.drop .ic{width:56px;height:56px;border-radius:16px;background:#e5eeff;color:var(--blue);display:grid;place-items:center;margin-bottom:6px}
+.drop .ic svg{width:28px;height:28px}
+.drop b{font-size:16px}.drop span{font-size:13px;color:var(--muted)}
+.drop input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer}
+.or{display:flex;align-items:center;gap:12px;margin:16px 0;color:#8a99b0;font-size:12.5px}
+.or:before,.or:after{content:"";flex:1;height:1px;background:var(--line)}
+.alt{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.alt button{display:flex;align-items:center;justify-content:center;gap:8px;height:44px;border:1px solid #c7d1e0;border-radius:11px;background:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:.15s}
+.alt button:hover{border-color:var(--blue);color:var(--blue);background:#f5f8ff}
+.alt button:focus-visible{outline:3px solid #2f6fed40;outline-offset:2px}
+.alt svg{width:18px;height:18px}
+.msg{min-height:20px;margin:10px 0 0;font-size:13px;color:var(--muted);text-align:center}.msg.err{color:var(--err)}
+.pv{display:none;animation:in .25s ease}.pv.show{display:block}
+@keyframes in{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.stage{position:relative;border-radius:16px;overflow:hidden;background:#0b1424;aspect-ratio:4/3;display:grid;place-items:center}
+.stage img{max-width:100%;max-height:100%;object-fit:contain;display:block}
+.corner{position:absolute;width:26px;height:26px;border:3px solid var(--amber);opacity:.95}
+.c1{top:12px;left:12px;border-right:0;border-bottom:0;border-radius:8px 0 0 0}
+.c2{top:12px;right:12px;border-left:0;border-bottom:0;border-radius:0 8px 0 0}
+.c3{bottom:12px;left:12px;border-right:0;border-top:0;border-radius:0 0 0 8px}
+.c4{bottom:12px;right:12px;border-left:0;border-top:0;border-radius:0 0 8px 0}
+.beam{position:absolute;left:0;right:0;height:3px;top:0;background:linear-gradient(90deg,transparent,var(--amber),transparent);box-shadow:0 0 18px var(--amber);display:none}
+.busy .beam{display:block;animation:sweep 1.8s ease-in-out infinite}
+.busy .stage:after{content:"";position:absolute;inset:0;background:#0b142455}
+@keyframes sweep{0%,100%{top:4%}50%{top:96%}}
+.info{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:14px}
+.fn{min-width:0}
+.fn b{display:block;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fn small{font-size:12.5px;color:var(--muted)}
+.chip{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:99px;font-size:11.5px;font-weight:600;background:#e4f5ec;color:var(--ok)}
+.chip.warn{background:#fff1dc;color:#b26a00}
+.link{border:0;background:none;color:var(--blue);font-weight:600;font-size:14px;cursor:pointer;padding:6px 8px;border-radius:8px;flex:none}
+.link:hover{background:#eef4ff}.link:focus-visible{outline:2px solid var(--blue)}
+.btn{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:52px;margin-top:20px;border:0;border-radius:12px;background:var(--blue);color:#fff;font-weight:700;font-size:16px;cursor:pointer;box-shadow:0 8px 18px #2f6fed33;transition:.15s}
+.btn:hover:not(:disabled){background:var(--blue-d)}
+.btn:disabled{background:#b9c6dc;box-shadow:none;cursor:not-allowed}
+.btn.busy,.btn.busy:disabled{background:var(--blue);opacity:.85;cursor:progress}
+.btn:focus-visible{outline:3px solid #2f6fed55;outline-offset:2px}
+.btn svg{width:18px;height:18px}
+.spin{display:none;width:17px;height:17px;border:2px solid #ffffff55;border-top-color:#fff;border-radius:50%;animation:rot .7s linear infinite}
+.btn.busy .spin{display:block}.btn.busy svg{display:none}
+@keyframes rot{to{transform:rotate(360deg)}}
+.tips{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:22px 0 0;padding:0;list-style:none}
+.tips li{padding:12px;border-radius:12px;background:#f2f5fb;font-size:12.5px;color:var(--muted);text-align:center;line-height:1.4}
+.tips b{display:block;margin-bottom:2px;color:var(--text);font-size:13px}
+.foot{margin:18px 0 0;text-align:center;font-size:12.5px;color:#7b8aa1}
+@media(max-width:480px){.tips{grid-template-columns:1fr}.pill{display:none}.alt{grid-template-columns:1fr}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+.camera-backdrop[hidden]{display:none}.camera-backdrop{position:fixed;inset:0;z-index:1000;display:grid;place-items:center;padding:16px;background:#091326cc;backdrop-filter:blur(8px)}
+.camera-dialog{width:min(620px,100%);padding:20px;border:1px solid #ffffff30;border-radius:20px;background:#fff;box-shadow:0 28px 80px #0005;animation:in .2s ease}
+.camera-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}.camera-head b{display:block;font-size:18px}.camera-head small{display:block;margin-top:4px;color:var(--muted);font-size:13px}
+.camera-close{width:34px;height:34px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--muted);font-size:21px;cursor:pointer}
+#camera-video{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:14px;background:#0b1424}
+.camera-status{min-height:20px;margin:10px 0;color:var(--muted);font-size:13px}.camera-actions{display:flex;justify-content:flex-end;gap:10px}
+.camera-actions button{min-height:42px;padding:0 15px;border:1px solid #c7d1e0;border-radius:10px;background:#fff;font-weight:650;cursor:pointer}.camera-actions .capture{border-color:var(--blue);background:var(--blue);color:#fff}.camera-actions button:disabled{opacity:.5;cursor:wait}
+@media(max-width:480px){.camera-dialog{padding:14px;border-radius:16px}.camera-actions button{flex:1}}
+</style>
 </head>
-<body class="bg-gray-100">
-<div class="flex items-center justify-center min-h-screen p-4">
-    <div class="w-full max-w-md bg-white p-8 rounded-2xl shadow-lg text-center">
-        <h2 class="text-3xl font-bold text-gray-800 mb-6">Upload Query Image</h2>
-        <form action="http://127.0.0.1:5000/process_query" method="POST" enctype="multipart/form-data" class="space-y-6">
-            <div>
-                <label for="query_image" class="block text-sm font-medium text-gray-600 mb-2">Select image</label>
-                <input type="file" name="query_image" id="query_image" required
-                       class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full 
-                              file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 
-                              hover:file:bg-blue-100">
-            </div>
-            <div>
-                <button type="submit"
-                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg shadow-md transition duration-300 transform hover:scale-105">
-                    Search
-                </button>
-            </div>
-        </form>
-    </div>
+<body>
+<header class="top">
+  <div class="brand"><div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#ffb347" stroke-width="2" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><circle cx="12" cy="11" r="2.5"/><path d="M7.5 17c.8-2 2.5-3 4.5-3s3.7 1 4.5 3"/></svg></div>Track You</div>
+  <div class="pill"><i></i>Image search</div>
+</header>
+
+<main class="page">
+  <div class="head">
+    <h1>Search by image</h1>
+    <p>Upload a clear photo of a face and we&rsquo;ll look for it among registered family profiles.</p>
+  </div>
+
+  <section class="card" id="card">
+    <form id="f" action="http://127.0.0.1:5000/process_query" method="POST" enctype="multipart/form-data" novalidate>
+      <div id="picker">
+        <label class="drop" id="drop" for="query_image">
+          <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/><circle cx="11" cy="9.5" r="1.8"/><path d="M7.8 14.2c.7-1.4 1.9-2 3.2-2s2.5.6 3.2 2"/></svg></span>
+          <b>Drop a photo here</b>
+          <span>or click to choose. JPG, PNG or WebP, up to 5 MB.</span>
+          <input type="file" name="query_image" id="query_image" accept="image/*">
+        </label>
+        <div class="or">or</div>
+        <div class="alt">
+          <button type="button" id="paste"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="5" width="12" height="16" rx="2"/><path d="M9 5a3 3 0 0 1 6 0"/></svg>Paste image</button>
+          <button type="button" id="cam"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4V8Z"/><circle cx="12" cy="13" r="3.5"/></svg>Use camera</button>
+        </div>
+      </div>
+
+      <div class="pv" id="pv">
+        <div class="stage"><img id="img" alt="Selected query photo"><i class="corner c1"></i><i class="corner c2"></i><i class="corner c3"></i><i class="corner c4"></i><div class="beam"></div></div>
+        <div class="info">
+          <div class="fn"><b id="fname"></b><small id="fmeta"></small><span class="chip" id="chip" hidden></span></div>
+          <button type="button" class="link" id="change">Change photo</button>
+        </div>
+      </div>
+
+      <p class="msg" id="msg" role="status" aria-live="polite"></p>
+      <button class="btn" id="go" type="submit" disabled><span class="spin"></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><span id="gt">Search for this face</span></button>
+    </form>
+
+    <ul class="tips">
+      <li><b>Face the camera</b>Front-facing works best</li>
+      <li><b>Good lighting</b>Avoid heavy shadows</li>
+      <li><b>One person</b>Crop out others</li>
+    </ul>
+  </section>
+  <p class="foot">Photos are used only for this search.</p>
+</main>
+
+<input type="file" id="camin" accept="image/*" capture="user" hidden>
+
+<div class="camera-backdrop" id="camera-modal" hidden>
+  <section class="camera-dialog" role="dialog" aria-modal="true" aria-labelledby="camera-title">
+    <div class="camera-head"><div><b id="camera-title">Take a photo</b><small>Center one face in the frame, then capture.</small></div><button type="button" class="camera-close" id="camera-close" aria-label="Close camera">&times;</button></div>
+    <video id="camera-video" autoplay playsinline muted></video>
+    <p class="camera-status" id="camera-status" role="status" aria-live="polite">Connecting to your camera...</p>
+    <div class="camera-actions"><button type="button" id="camera-cancel">Cancel</button><button type="button" class="capture" id="camera-capture" disabled>Capture photo</button></div>
+  </section>
 </div>
+
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i)};
+  var input=$('query_image'),drop=$('drop'),MAX=5*1024*1024,OK=/^image\/(jpeg|png|webp|gif|bmp)$/,url=null;
+  function fmt(n){return n<1048576?Math.round(n/1024)+' KB':(n/1048576).toFixed(1)+' MB'}
+  function say(t,err){var m=$('msg');m.textContent=t||'';m.classList.toggle('err',!!err)}
+
+  function reset(){
+    if(url)URL.revokeObjectURL(url);url=null;input.value='';
+    $('pv').classList.remove('show');$('picker').hidden=false;$('go').disabled=true;say('')}
+
+  function take(file){
+    if(!file)return;
+    if(!OK.test(file.type)){say('That file is not a supported image. Use JPG, PNG or WebP.',true);return}
+    if(file.size>MAX){say('That image is over 5 MB. Choose a smaller one.',true);return}
+    var dt=new DataTransfer();dt.items.add(file);input.files=dt.files;
+    if(url)URL.revokeObjectURL(url);url=URL.createObjectURL(file);
+    var img=$('img');
+    img.onload=function(){
+      var w=img.naturalWidth,h=img.naturalHeight,low=w<200||h<200,c=$('chip');
+      $('fmeta').textContent=w+'\u00d7'+h+' px \u00b7 '+fmt(file.size);
+      c.hidden=false;c.className='chip'+(low?' warn':'');c.textContent=low?'Low resolution':'Good quality';
+      say(low?'This photo is small, so results may be less accurate.':'')};
+    img.src=url;$('fname').textContent=file.name;$('fmeta').textContent=fmt(file.size);$('chip').hidden=true;
+    $('picker').hidden=true;$('pv').classList.add('show');$('go').disabled=false;say('')}
+
+  input.addEventListener('change',function(){take(input.files[0])});
+  ['dragenter','dragover'].forEach(function(v){drop.addEventListener(v,function(e){e.preventDefault();drop.classList.add('drag')})});
+  ['dragleave','drop'].forEach(function(v){drop.addEventListener(v,function(){drop.classList.remove('drag')})});
+  drop.addEventListener('drop',function(e){e.preventDefault();take(e.dataTransfer.files[0])});
+
+  $('change').onclick=reset;
+  var cameraStream=null,cameraModal=$('camera-modal'),cameraVideo=$('camera-video');
+  function closeCamera(){
+    if(cameraStream){cameraStream.getTracks().forEach(function(track){track.stop()});cameraStream=null}
+    cameraVideo.srcObject=null;cameraModal.hidden=true;$('camera-capture').disabled=true
+  }
+  function openCamera(){
+    if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){say('Live camera is unavailable here. Choose a photo or use a browser that supports webcam access.',true);$('camin').click();return}
+    cameraModal.hidden=false;$('camera-status').textContent='Waiting for camera permission...';$('camera-capture').disabled=true;
+    navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'user'}},audio:false})
+      .then(function(stream){cameraStream=stream;cameraVideo.srcObject=stream;return cameraVideo.play()})
+      .then(function(){$('camera-status').textContent='Camera ready. Frame the face and capture.';$('camera-capture').disabled=false})
+      .catch(function(){closeCamera();say('Could not open the camera. Allow camera access in your browser, then try again.',true)})
+  }
+  function captureCamera(){
+    if(!cameraVideo.videoWidth){$('camera-status').textContent='Camera is still starting. Try again in a moment.';return}
+    var canvas=document.createElement('canvas');canvas.width=cameraVideo.videoWidth;canvas.height=cameraVideo.videoHeight;
+    canvas.getContext('2d').drawImage(cameraVideo,0,0,canvas.width,canvas.height);
+    canvas.toBlob(function(blob){
+      if(!blob){$('camera-status').textContent='Could not capture this photo. Please try again.';return}
+      var file=new File([blob],'camera-photo-'+Date.now()+'.jpg',{type:'image/jpeg',lastModified:Date.now()});
+      closeCamera();take(file)
+    },'image/jpeg',.92)
+  }
+  $('cam').addEventListener('click',openCamera);
+  $('camera-capture').addEventListener('click',captureCamera);
+  $('camera-cancel').addEventListener('click',closeCamera);$('camera-close').addEventListener('click',closeCamera);
+  cameraModal.addEventListener('click',function(event){if(event.target===cameraModal)closeCamera()});
+  document.addEventListener('keydown',function(event){if(event.key==='Escape'&&!cameraModal.hidden)closeCamera()});
+  window.addEventListener('pagehide',closeCamera);
+  $('camin').addEventListener('change',function(){take(this.files[0]);this.value=''});
+
+  function fromClip(items){
+    for(var i=0;i<items.length;i++){var it=items[i];
+      if(it.type&&it.type.indexOf('image/')===0){var f=it.getAsFile?it.getAsFile():null;if(f){take(f);return true}}}
+    return false}
+  document.addEventListener('paste',function(e){if(e.clipboardData&&fromClip(e.clipboardData.items))e.preventDefault()});
+  $('paste').onclick=function(){
+    if(!navigator.clipboard||!navigator.clipboard.read){say('Press Ctrl+V (or \u2318V) to paste an image.');return}
+    navigator.clipboard.read().then(function(list){
+      for(var i=0;i<list.length;i++){var t=list[i].types.filter(function(x){return x.indexOf('image/')===0})[0];
+        if(t){return list[i].getType(t).then(function(b){take(new File([b],'pasted-image.'+t.split('/')[1],{type:t}))})}}
+      say('No image found on the clipboard.',true)
+    }).catch(function(){say('Press Ctrl+V (or \u2318V) to paste an image.')})};
+
+  $('f').addEventListener('submit',function(e){
+    if(!input.files.length){e.preventDefault();say('Choose a photo to search with.',true);return}
+    $('card').classList.add('busy');$('go').classList.add('busy');$('go').disabled=true;
+    $('gt').textContent='Searching\u2026';
+    $('pv').classList.add('busy');document.querySelector('.stage').parentNode.classList.add('busy')});
+})();
+</script>
 </body>
 </html>

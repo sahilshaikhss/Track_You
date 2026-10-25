@@ -1,73 +1,103 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Registration Successful</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style> body { font-family: 'Inter', sans-serif; } </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f1b2d">
+<title>CrowdCheck | Registration Successful</title>
+<style>
+:root{--ink:#0f1b2d;--text:#18253a;--muted:#62728a;--line:#dce3ee;--bg:#eef2f8;--blue:#2f6fed;--blue-d:#2358c4;--amber:#ffb347;--ok:#16875a;--okbg:#e4f5ec;--warn:#8a5a00;--warnbg:#fff7e8}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:radial-gradient(80% 45% at 50% 0,#dfe8fb 0,transparent 70%),var(--bg);color:var(--text);font:15px/1.55 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button,a{font:inherit}
+.top{display:flex;align-items:center;justify-content:center;height:64px;background:#fff;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px;color:var(--text);text-decoration:none;padding:4px 8px;border-radius:8px}
+.brand:focus-visible{outline:2px solid var(--blue)}
+.logo{width:34px;height:34px;border-radius:9px;background:var(--ink);display:grid;place-items:center}
+.logo svg{width:20px;height:20px}
+.wrap{flex:1;display:flex;align-items:center;justify-content:center;padding:24px 16px 48px}
+.card{width:min(500px,100%);background:#fff;border:1px solid var(--line);border-radius:22px;padding:clamp(24px,5vw,38px);box-shadow:0 1px 2px #10213a0d,0 24px 48px #10213a14;text-align:center}
+.badge{width:76px;height:76px;margin:0 auto 18px;border-radius:50%;display:grid;place-items:center;background:var(--okbg);color:var(--ok);box-shadow:0 0 0 8px #16875a14;animation:pop .4s ease}
+.badge svg{width:38px;height:38px}
+.draw{stroke-dasharray:40;stroke-dashoffset:40;animation:draw .55s .15s ease forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes pop{0%{transform:scale(.7);opacity:0}100%{transform:none;opacity:1}}
+h1{margin:0 0 6px;font-size:clamp(25px,4.6vw,30px);letter-spacing:-.6px;line-height:1.2}
+.lead{margin:0 auto;max-width:38ch;color:var(--muted)}
+.lead b{color:var(--text)}
+.key{margin:26px 0 0;padding:18px;border:1.5px dashed #b5c3d8;border-radius:16px;background:#f7f9fd}
+.key small{display:block;margin-bottom:10px;font-size:13px;color:var(--muted)}
+.code{display:block;padding:14px 12px;border-radius:12px;background:#fff;border:1px solid var(--line);font:700 clamp(20px,5vw,26px)/1.2 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;letter-spacing:.14em;word-break:break-all;user-select:all}
+.krow{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.kb{display:flex;align-items:center;justify-content:center;gap:8px;min-height:44px;border:1px solid #c7d1e0;border-radius:11px;background:#fff;font-weight:600;font-size:14px;cursor:pointer;transition:.15s;color:var(--text)}
+.kb:hover{border-color:var(--blue);color:var(--blue);background:#f5f8ff}
+.kb:focus-visible{outline:3px solid #2f6fed55;outline-offset:2px}
+.kb svg{width:17px;height:17px}
+.kb.done{border-color:var(--ok);color:var(--ok);background:var(--okbg)}
+.warn{display:flex;gap:10px;margin:16px 0 0;padding:12px 14px;border-radius:12px;background:var(--warnbg);color:var(--warn);font-size:13.5px;text-align:left}
+.warn svg{width:18px;height:18px;flex:none;margin-top:2px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:52px;margin-top:22px;border-radius:12px;background:var(--blue);color:#fff;font-weight:700;text-decoration:none;box-shadow:0 8px 18px #2f6fed33;transition:.15s}
+.btn:hover{background:var(--blue-d)}
+.btn:focus-visible{outline:3px solid #2f6fed55;outline-offset:2px}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;padding:10px 18px;border-radius:10px;background:var(--ink);color:#fff;font-size:14px;pointer-events:none;transition:.25s}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media(max-width:420px){.krow{grid-template-columns:1fr}}
+@media print{.top,.krow,.btn,.toast{display:none}body{background:#fff}.card{box-shadow:none;border:0}}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.draw{stroke-dashoffset:0}}
+</style>
 </head>
-<body class="bg-gray-100 flex flex-col items-center justify-center min-h-screen">
+<body>
+<header class="top">
+  <a class="brand" href="/"><div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#ffb347" stroke-width="2" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><circle cx="12" cy="11" r="2.5"/><path d="M7.5 17c.8-2 2.5-3 4.5-3s3.7 1 4.5 3"/></svg></div>CrowdCheck</a>
+</header>
 
-  <!-- Navigation -->
-  <nav class="bg-white shadow-md w-full absolute top-0">
-    <div class="max-w-6xl mx-auto px-4">
-      <div class="flex justify-center items-center py-4">
-        <a href="/" class="text-xl font-bold text-blue-600">CrowdCheck</a>
+<div class="wrap">
+  <main class="card" role="status">
+    <div class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path class="draw" d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+    <h1>Registration successful</h1>
+    <p class="lead">Thank you, <b>{{ guardian_name }}</b>. Your details have been saved.</p>
+
+    <section class="key" aria-labelledby="kl">
+      <small id="kl">Your unique key</small>
+      <span class="code" id="uniqueKey">{{ registration_id }}</span>
+      <div class="krow">
+        <button type="button" class="kb" id="copy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h8"/></svg><span id="ct">Copy key</span></button>
+        <button type="button" class="kb" id="save"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>Save as file</button>
       </div>
-    </div>
-  </nav>
+    </section>
 
-  <!-- Success Box -->
-  <div class="max-w-lg mx-auto text-center p-10 bg-white rounded-2xl shadow-lg border border-gray-200 mt-20">
-    <div class="text-6xl mb-4 text-green-500">✔</div>
-    <h1 class="text-3xl font-bold text-gray-800">Registration Successful!</h1>
-    <p class="text-gray-600 mt-2 mb-6">
-      Thank you, <strong class="font-semibold text-gray-700">{{ guardian_name }}</strong>. Your details have been saved.
-    </p>
-    
-    <!-- Unique Key -->
-    <div class="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-4 my-6">
-      <p class="text-sm text-gray-500 mb-2">Your Unique Key is:</p>
-      <p id="uniqueKey" class="text-2xl font-bold text-gray-800 tracking-widest bg-gray-200 p-3 rounded-md inline-block">
-        {{ registration_id }}
-      </p>
-      <button id="copyButton" class="ml-3 bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold py-2 px-3 rounded-lg transition duration-300">
-        Copy
-      </button>
-    </div>
-    
-    <p class="text-gray-500 text-sm mt-4">Please save this key. It can be used for future reference.</p>
-    
-    <!-- Start New Registration -->
-    <a href="/" class="mt-8 inline-block w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300">
-      Start New Registration
-    </a>
-  </div>
+    <div class="warn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8v.5"/></svg><span>Please save this key. It can be used for future reference.</span></div>
 
-  <!-- Copy Button Script -->
-  <script>
-    const copyButton = document.getElementById('copyButton');
-    const uniqueKey = document.getElementById('uniqueKey').textContent.trim();
-    copyButton.addEventListener('click', () => {
-      const textArea = document.createElement('textarea');
-      textArea.value = uniqueKey;
-      textArea.style.position = 'absolute';
-      textArea.style.left = '-9999px';
-      document.body.appendChild(textArea);
-      textArea.select();
-      try {
-        document.execCommand('copy');
-        copyButton.textContent = 'Copied!';
-      } catch (err) {
-        console.error('Failed to copy text: ', err);
-        copyButton.textContent = 'Error';
-      }
-      document.body.removeChild(textArea);
-      setTimeout(() => { copyButton.textContent = 'Copy'; }, 2000);
-    });
-  </script>
+    <a class="btn" href="/">Start new registration</a>
+  </main>
+</div>
 
+<div class="toast" id="toast" role="status"></div>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i)};
+  var key=$('uniqueKey').textContent.trim();
+  function toast(t){var e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(function(){e.classList.remove('show')},1800)}
+  function legacy(){
+    var a=document.createElement('textarea');a.value=key;a.setAttribute('readonly','');a.style.cssText='position:absolute;left:-9999px';
+    document.body.appendChild(a);a.select();var ok=false;
+    try{ok=document.execCommand('copy')}catch(e){}
+    document.body.removeChild(a);return ok}
+  function done(ok){
+    var b=$('copy');
+    if(ok){b.classList.add('done');$('ct').textContent='Copied';toast('Key copied')}
+    else toast('Copy failed. Select the key and copy it manually.');
+    setTimeout(function(){b.classList.remove('done');$('ct').textContent='Copy key'},2000)}
+  $('copy').onclick=function(){
+    if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(key).then(function(){done(true)},function(){done(legacy())});
+    else done(legacy())};
+  $('save').onclick=function(){
+    var name=($('uniqueKey').textContent||'key').trim();
+    var blob=new Blob(['Registration key: '+name+'\n'],{type:'text/plain'});
+    var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='registration-key.txt';
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    setTimeout(function(){URL.revokeObjectURL(a.href)},500);toast('Key saved to your downloads')};
+})();
+</script>
 </body>
 </html>

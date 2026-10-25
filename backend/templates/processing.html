@@ -1,64 +1,201 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>Live Processing</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f1b2d">
+<title>Track You | Live Processing</title>
 <style>
-table{
-width:100%;
-border-collapse:collapse;
+:root{--ink:#0f1b2d;--text:#18253a;--muted:#62728a;--line:#dce3ee;--bg:#eef2f8;--blue:#2f6fed;--blue-d:#2358c4;--amber:#ffb347;--ok:#16875a;--okbg:#e4f5ec;--err:#c0392b;--errbg:#fdf3f1;--warn:#8a5a00;--warnbg:#fff1dc;--infobg:#e7efff}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;background:var(--bg);color:var(--text);font:15px/1.5 "Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select,a{font:inherit;color:inherit}
+.top{position:sticky;top:0;z-index:20;display:flex;align-items:center;justify-content:space-between;height:64px;padding:0 clamp(16px,4vw,48px);background:#fff;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:700;font-size:18px}
+.logo{width:34px;height:34px;border-radius:9px;background:var(--ink);display:grid;place-items:center}
+.logo svg{width:20px;height:20px}
+.live{display:flex;align-items:center;gap:8px;padding:5px 13px;border-radius:99px;background:#f2f5fa;border:1px solid var(--line);font-size:13px;color:var(--muted)}
+.live i{width:8px;height:8px;border-radius:50%;background:#9aa8bd}
+.live.on i{background:var(--ok);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 #16875a66}100%{box-shadow:0 0 0 8px #16875a00}}
+.page{width:min(1240px,calc(100% - 32px));margin:28px auto 56px}
+.head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:18px}
+h1{margin:0;font-size:clamp(26px,4vw,33px);letter-spacing:-.7px;line-height:1.15}
+.head p{margin:5px 0 0;color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.stat{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.stat small{display:block;color:var(--muted);font-size:12.5px}
+.stat b{font-size:24px;letter-spacing:-.5px}
+.tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.search{position:relative;flex:1;min-width:200px}
+.search svg{position:absolute;left:12px;top:12px;width:18px;height:18px;color:#8c9bb2;pointer-events:none}
+.ctl{width:100%;height:42px;padding:0 12px 0 40px;border:1px solid #c7d1e0;border-radius:10px;background:#fff;font-size:14px}
+select.ctl{padding:0 12px;width:auto;cursor:pointer}
+.ctl:focus{outline:0;border-color:var(--blue);box-shadow:0 0 0 3px #2f6fed1f}
+.tg{display:inline-flex;align-items:center;gap:8px;height:42px;padding:0 14px;border:1px solid #c7d1e0;border-radius:10px;background:#fff;font-weight:600;font-size:14px;cursor:pointer;transition:.15s}
+.tg:hover{border-color:var(--blue);color:var(--blue)}
+.tg:focus-visible{outline:3px solid #2f6fed55;outline-offset:2px}
+.tg svg{width:16px;height:16px}
+.tg[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.wrap{background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:0 1px 2px #10213a0d,0 16px 36px #10213a0f}
+.scroll{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:820px}
+th{position:sticky;top:0;padding:12px 16px;background:#f6f8fc;border-bottom:1px solid var(--line);color:var(--muted);font-size:12.5px;font-weight:600;text-align:left;white-space:nowrap}
+td{padding:12px 16px;border-bottom:1px solid #eef2f6;vertical-align:middle;font-size:14px}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:hover{background:#fafcff}
+.id{font-weight:700;color:var(--muted)}
+.im{display:block;width:72px;height:72px;padding:0;border:0;border-radius:11px;overflow:hidden;background:#e6ecf5;cursor:zoom-in}
+.im img{width:100%;height:100%;object-fit:cover;display:block}
+.im:focus-visible{outline:3px solid var(--blue);outline-offset:2px}
+.none{display:grid;place-items:center;width:72px;height:72px;border:1.5px dashed #c7d1e0;border-radius:11px;color:#9aa8bd;font-size:12px}
+.ph{display:flex;align-items:center;gap:8px;white-space:nowrap}
+.cp{border:0;background:#eef2f8;color:var(--muted);font-size:12px;font-weight:600;padding:3px 9px;border-radius:7px;cursor:pointer}
+.cp:hover{background:#e1e9f6;color:var(--text)}.cp:focus-visible{outline:2px solid var(--blue)}
+.st{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:99px;font-size:12.5px;font-weight:700;background:#eef2f8;color:var(--muted);white-space:nowrap}
+.st:before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.st.ok{background:var(--okbg);color:var(--ok)}.st.bad{background:var(--errbg);color:var(--err)}
+.st.wait{background:var(--warnbg);color:var(--warn)}.st.wait:before{animation:blink 1.2s ease-in-out infinite}
+.st.sent{background:var(--infobg);color:var(--blue-d)}
+@keyframes blink{50%{opacity:.25}}
+.tm{white-space:nowrap;color:var(--muted)}
+.empty{display:none;padding:48px 20px;text-align:center;color:var(--muted)}
+.empty.show{display:block}
+.empty b{display:block;color:var(--text);font-size:17px;margin-bottom:4px}
+.foot{margin:14px 0 0;color:var(--muted);font-size:12.5px;text-align:center}
+.lb{position:fixed;inset:0;z-index:60;display:none;align-items:center;justify-content:center;padding:20px;background:#0b1424e6}
+.lb.show{display:flex}.lb img{max-width:min(92vw,900px);max-height:86vh;border-radius:14px;box-shadow:0 30px 60px #0008}
+.lb button{position:absolute;top:16px;right:16px;width:42px;height:42px;border:0;border-radius:50%;background:#ffffff22;color:#fff;font-size:22px;cursor:pointer}
+.lb button:focus-visible{outline:2px solid #fff}
+.toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,20px);opacity:0;padding:10px 18px;border-radius:10px;background:var(--ink);color:#fff;font-size:14px;pointer-events:none;transition:.25s;z-index:80}
+.toast.show{opacity:1;transform:translate(-50%,0)}
+@media(max-width:760px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  table{min-width:0}thead{display:none}
+  tbody tr{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;padding:14px;border-bottom:1px solid var(--line)}
+  td{display:block;padding:0;border:0}
+  td[data-l]:before{content:attr(data-l);display:block;font-size:11.5px;color:var(--muted)}
+  td.imgs{grid-column:1/-1;display:flex;gap:10px}
 }
-th,td{
-border:1px solid black;
-padding:10px;
-text-align:center;
-}
-img{
-width:120px;
-height:120px;
-object-fit:cover;
-}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
 <body>
+<header class="top">
+  <div class="brand"><div class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="#ffb347" stroke-width="2" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><circle cx="12" cy="11" r="2.5"/><path d="M7.5 17c.8-2 2.5-3 4.5-3s3.7 1 4.5 3"/></svg></div>Track You</div>
+  <div class="live" id="live"><i></i><span id="livet">Auto-refresh off</span></div>
+</header>
 
-<h1>Live Query Processing</h1>
+<main class="page">
+  <div class="head">
+    <div><h1>Live query processing</h1><p>Every photo search and its result, newest data from the server.</p></div>
+  </div>
 
-<table>
+  <div class="stats" aria-label="Summary">
+    <div class="stat"><small>Total</small><b id="s-all">0</b></div>
+    <div class="stat"><small>Found</small><b id="s-ok" style="color:var(--ok)">0</b></div>
+    <div class="stat"><small>In progress</small><b id="s-wait" style="color:var(--warn)">0</b></div>
+    <div class="stat"><small>Failed or not found</small><b id="s-bad" style="color:var(--err)">0</b></div>
+  </div>
 
-<tr>
-<th>ID</th>
-<th>Query Image</th>
-<th>Matched Image</th>
-<th>Guardian Number</th>
-<th>Status</th>
-<th>Time</th>
-</tr>
+  <div class="tools">
+    <div class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg><input class="ctl" id="q" type="search" placeholder="Search by ID, phone or status" aria-label="Search rows"></div>
+    <select class="ctl" id="flt" aria-label="Filter by status"><option value="">All statuses</option><option value="ok">Found</option><option value="wait">In progress</option><option value="sent">Sent</option><option value="bad">Failed or not found</option></select>
+    <button type="button" class="tg" id="tg" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12a8 8 0 1 1-2.3-5.7M20 4v5h-5"/></svg><span id="tgt">Auto-refresh</span></button>
+  </div>
 
-{% for p in processes %}
+  <div class="wrap">
+    <div class="scroll">
+      <table>
+        <thead><tr><th>ID</th><th>Query image</th><th>Matched image</th><th>Guardian number</th><th>Status</th><th>Time</th></tr></thead>
+        <tbody id="tb">
+        {% for p in processes %}
+          <tr>
+            <td class="id" data-l="ID">#{{ p.id }}</td>
+            <td class="imgs">
+              <button type="button" class="im" data-zoom="{{ p.query_image_url }}" aria-label="Enlarge query image {{ p.id }}"><img src="{{ p.query_image_url }}" alt="Query image {{ p.id }}" loading="lazy"></button>
+              {% if p.matched_image_url %}
+              <button type="button" class="im" data-zoom="{{ p.matched_image_url }}" aria-label="Enlarge matched image {{ p.id }}"><img src="{{ p.matched_image_url }}" alt="Matched image {{ p.id }}" loading="lazy"></button>
+              {% else %}
+              <span class="none">No match</span>
+              {% endif %}
+            </td>
+            <td data-l="Guardian number">{% if p.guardian_phone %}<span class="ph"><span class="num">{{ p.guardian_phone }}</span><button type="button" class="cp">Copy</button></span>{% else %}<span class="tm">&mdash;</span>{% endif %}</td>
+            <td data-l="Status"><span class="st">{{ p.status }}</span></td>
+            <td class="tm" data-l="Time">{{ p.created_at }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div class="empty" id="empty"><b>Nothing to show</b><span id="emptyt">No queries have been processed yet.</span></div>
+  </div>
+  <p class="foot" id="foot"></p>
+</main>
 
-<tr>
+<div class="lb" id="lb" role="dialog" aria-modal="true" aria-label="Enlarged photo"><button type="button" id="lbx" aria-label="Close">&times;</button><img id="lbi" alt=""></div>
+<div class="toast" id="toast" role="status"></div>
 
-<td>{{ p.id }}</td>
+<script>
+(function(){
+  var $=function(i){return document.getElementById(i)};
+  var rows=Array.prototype.slice.call(document.querySelectorAll('#tb tr'));
+  var INTERVAL=10, KEY='ty_live_refresh', timer=null, left=INTERVAL;
 
-<td>
-<img src="{{ p.query_image_url }}">
-</td>
+  function kind(t){
+    t=(t||'').toLowerCase();
+    if(/not\s*found|fail|error|reject|invalid|denied/.test(t))return 'bad';
+    if(/found|match|success|complete|done|verified/.test(t))return 'ok';
+    if(/sent|deliver|alert/.test(t))return 'sent';
+    if(/pend|process|queue|wait|running|progress|start/.test(t))return 'wait';
+    return '';
+  }
+  var c={all:0,ok:0,wait:0,bad:0};
+  rows.forEach(function(r){
+    var s=r.querySelector('.st'),k=kind(s.textContent);
+    r.dataset.k=k;if(k)s.classList.add(k);
+    c.all++;if(k==='ok')c.ok++;else if(k==='wait')c.wait++;else if(k==='bad')c.bad++;
+    r.dataset.text=r.textContent.toLowerCase().replace(/\s+/g,' ');
+  });
+  $('s-all').textContent=c.all;$('s-ok').textContent=c.ok;$('s-wait').textContent=c.wait;$('s-bad').textContent=c.bad;
 
-<td>
-<img src="{{ p.matched_image_url }}">
-</td>
+  function apply(){
+    var q=$('q').value.trim().toLowerCase(),f=$('flt').value,shown=0;
+    rows.forEach(function(r){
+      var show=(!q||r.dataset.text.indexOf(q)>-1)&&(!f||r.dataset.k===f);
+      r.style.display=show?'':'none';if(show)shown++});
+    var e=$('empty');
+    e.classList.toggle('show',shown===0);
+    $('emptyt').textContent=c.all===0?'No queries have been processed yet.':'No rows match your search or filter.';
+    $('foot').textContent=c.all?('Showing '+shown+' of '+c.all+' queries.'):'';
+  }
+  $('q').addEventListener('input',apply);$('flt').addEventListener('change',apply);apply();
 
-<td>{{ p.guardian_phone }}</td>
+  function toast(t){var e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(function(){e.classList.remove('show')},1800)}
+  document.querySelectorAll('.cp').forEach(function(b){b.onclick=function(){
+    var t=b.parentNode.querySelector('.num').textContent.trim();
+    (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(function(){toast('Phone number copied')},function(){toast('Copy failed. Select the number manually.')})}});
 
-<td>{{ p.status }}</td>
+  var lb=$('lb'),last=null;
+  function open(src){last=document.activeElement;$('lbi').src=src;lb.classList.add('show');$('lbx').focus()}
+  function close(){lb.classList.remove('show');if(last)last.focus()}
+  document.querySelectorAll('[data-zoom]').forEach(function(z){z.onclick=function(){open(z.dataset.zoom)}});
+  $('lbx').onclick=close;lb.addEventListener('click',function(e){if(e.target===lb)close()});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape')close()});
 
-<td>{{ p.created_at }}</td>
-
-</tr>
-
-{% endfor %}
-
-</table>
-
+  function store(v){try{if(v===undefined)return localStorage.getItem(KEY)==='1';localStorage.setItem(KEY,v?'1':'0')}catch(e){return false}}
+  function paint(on){
+    $('tg').setAttribute('aria-pressed',on);$('tgt').textContent=on?'Auto-refresh on':'Auto-refresh';
+    $('live').classList.toggle('on',on);$('livet').textContent=on?'Live \u00b7 refreshing in '+left+'s':'Auto-refresh off'}
+  function start(){
+    left=INTERVAL;paint(true);clearInterval(timer);
+    timer=setInterval(function(){
+      if(document.hidden||lb.classList.contains('show'))return;
+      left--;if(left<=0){location.reload();return}paint(true)},1000)}
+  function stop(){clearInterval(timer);paint(false)}
+  $('tg').onclick=function(){var on=$('tg').getAttribute('aria-pressed')!=='true';store(on);on?start():stop()};
+  if(store())start();else paint(false);
+})();
+</script>
 </body>
 </html>
